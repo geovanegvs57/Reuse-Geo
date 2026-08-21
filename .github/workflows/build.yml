@@ -33,3 +33,4 @@ jobs:
         with:
           name: Reuse-Geovane
           path: app/build/outputs/apk/debug/*.apk
+# Forçar build
