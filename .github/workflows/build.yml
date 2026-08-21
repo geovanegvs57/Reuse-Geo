@@ -16,14 +16,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@main
 
-      - name: Set up debug keystore
+      - name: Create debug keystore
         run: |
-          mkdir -p ~/.android
-          echo "storePassword=android" > ~/.android/debug.keystore.properties
-          echo "keyPassword=android" >> ~/.android/debug.keystore.properties
-          echo "keyAlias=androiddebugkey" >> ~/.android/debug.keystore.properties
-          echo "storeFile=~/.android/debug.keystore" >> ~/.android/debug.keystore.properties
-          keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug, O=Android, C=US"
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug, O=Android, C=US"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5.0.0
@@ -47,5 +42,3 @@ jobs:
         with:
           name: Reuse-Geovane
           path: app/build/outputs/apk/debug/*.apk
-
-# trigger build
