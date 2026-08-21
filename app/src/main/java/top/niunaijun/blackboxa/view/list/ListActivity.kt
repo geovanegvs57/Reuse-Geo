@@ -75,9 +75,9 @@ class ListActivity : BaseActivity() {
 
         viewModel.loadingLiveData.observe(this) {
             if (it) {
-                viewBinding.stateView.showLoading()
+                // viewBinding.stateView.showLoading() // REMOVIDO - StateView não está mais disponível
             } else {
-                viewBinding.stateView.showContent()
+                // viewBinding.stateView.showContent() // REMOVIDO - StateView não está mais disponível
             }
         }
 
@@ -87,10 +87,10 @@ class ListActivity : BaseActivity() {
                 viewBinding.searchView.setQuery("", false)
                 filterApp("")
                 if (it.isNotEmpty()) {
-                    viewBinding.stateView.showContent()
+                    // viewBinding.stateView.showContent() // REMOVIDO - StateView não está mais disponível
                     viewModel.previewInstalledList()
                 } else {
-                    viewBinding.stateView.showEmpty()
+                    // viewBinding.stateView.showEmpty() // REMOVIDO - StateView não está mais disponível
                 }
             }
         }
