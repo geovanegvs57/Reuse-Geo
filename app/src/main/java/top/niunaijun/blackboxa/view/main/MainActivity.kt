@@ -2,6 +2,7 @@ package top.niunaijun.blackboxa.view.main
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import android.net.VpnService
 import android.os.Bundle
@@ -25,6 +26,9 @@ import top.niunaijun.blackboxa.view.base.LoadingActivity
 import top.niunaijun.blackboxa.view.fake.FakeManagerActivity
 import top.niunaijun.blackboxa.view.list.ListActivity
 import top.niunaijun.blackboxa.view.setting.SettingActivity
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : LoadingActivity() {
 
@@ -40,6 +44,11 @@ class MainActivity : LoadingActivity() {
         private const val TAG = "MainActivity"
         private const val STORAGE_PERMISSION_REQUEST_CODE = 1001
         private const val VPN_PERMISSION_REQUEST_CODE = 1002
+
+        // ========== RESET TRIAL CONFIG ==========
+        private const val PREFS_NAME = "trial_control"
+        private const val KEY_FIRST_OPEN = "first_open_"
+        private const val TRIAL_DAYS = 2
 
         fun start(context: Context) {
             val intent = Intent(context, MainActivity::class.java)
@@ -63,10 +72,7 @@ class MainActivity : LoadingActivity() {
             initFab()
             initToolbarSubTitle()
 
-            
             checkStoragePermission()
-
-            
             checkVpnPermission()
 
             try {
@@ -76,21 +82,116 @@ class MainActivity : LoadingActivity() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Critical error in onCreate: ${e.message}")
-            
             showErrorDialog("Failed to initialize app: ${e.message}")
         }
     }
 
+    // ============================================================
+    // ========== RESET TRIAL - MÉTODOS PÚBLICOS ==========
+    // ============================================================
+
+    /**
+     * Método público para ser chamado pelo AppsFragment.
+     * Verifica se o trial expirou e, se sim, reseta e renova.
+     * @param packageName pacote do app a ser verificado
+     * @return true se o reset foi executado, false caso contrário
+     */
+    fun checkAndResetTrial(packageName: String): Boolean {
+        if (isTrialExpired(packageName)) {
+            Log.d(TAG, "⏰ Trial expirado para $packageName. Resetando...")
+            resetTrial(packageName)
+            saveFirstOpenDate(packageName)
+            return true
+        } else {
+            Log.d(TAG, "✅ Trial ainda válido para $packageName")
+            return false
+        }
+    }
+
+    private fun isTrialExpired(packageName: String): Boolean {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val key = KEY_FIRST_OPEN + packageName
+        val firstOpenStr = prefs.getString(key, null)
+
+        if (firstOpenStr == null) {
+            saveFirstOpenDate(packageName)
+            return false
+        }
+
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val firstOpen = sdf.parse(firstOpenStr) ?: return false
+        val hoje = Date()
+        val diff = (hoje.time - firstOpen.time) / (1000 * 60 * 60 * 24)
+
+        Log.d(TAG, "📅 Dias desde primeira abertura para $packageName: $diff (limite: $TRIAL_DAYS)")
+        return diff >= TRIAL_DAYS
+    }
+
+    private fun saveFirstOpenDate(packageName: String) {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val hoje = sdf.format(Date())
+        prefs.edit().putString(KEY_FIRST_OPEN + packageName, hoje).apply()
+        Log.d(TAG, "💾 Data salva para $packageName: $hoje")
+    }
+
+    private fun resetTrial(packageName: String) {
+        try {
+            val cacheDir = cacheDir
+            val externalCacheDir = externalCacheDir
+            val filesDir = filesDir
+            val externalFilesDir = getExternalFilesDir(null)
+
+            val trialFiles = listOf("trial", "demo", "test", "premium", "vip", "subscription", "license", "activation")
+            for (name in trialFiles) {
+                deleteRecursive(File(cacheDir, name))
+                if (externalCacheDir != null) deleteRecursive(File(externalCacheDir, name))
+                deleteRecursive(File(filesDir, name))
+                if (externalFilesDir != null) deleteRecursive(File(externalFilesDir, name))
+            }
+
+            val prefNames = listOf("trial", "demo", "premium", "vip", "subscription", "license", "activation")
+            for (prefName in prefNames) {
+                try {
+                    getSharedPreferences(prefName, Context.MODE_PRIVATE).edit().clear().apply()
+                } catch (_: Exception) {}
+            }
+
+            try {
+                val dataDir = File("/data/data/$packageName")
+                if (dataDir.exists() && dataDir.isDirectory) {
+                    deleteRecursive(dataDir)
+                }
+            } catch (_: Exception) {}
+
+            Log.d(TAG, "🔥 Reset trial executado para $packageName")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Erro no reset para $packageName: ${e.message}")
+        }
+    }
+
+    private fun deleteRecursive(file: File?) {
+        if (file == null || !file.exists()) return
+        try {
+            if (file.isDirectory) {
+                file.listFiles()?.forEach { deleteRecursive(it) }
+            }
+            file.delete()
+        } catch (_: Exception) {}
+    }
+
+    // ============================================================
+    // ========== MÉTODOS EXISTENTES (NÃO ALTERADOS) ==========
+    // ============================================================
+
     private fun checkStoragePermission() {
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                
                 if (!android.os.Environment.isExternalStorageManager()) {
                     Log.w(TAG, "MANAGE_EXTERNAL_STORAGE permission not granted")
                     showStoragePermissionDialog()
                 }
             } else {
-                
                 if (androidx.core.content.ContextCompat.checkSelfPermission(
                                 this,
                                 android.Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -176,7 +277,6 @@ class MainActivity : LoadingActivity() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error opening storage settings: ${e.message}")
-            
             try {
                 val intent =
                         Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
@@ -202,16 +302,13 @@ class MainActivity : LoadingActivity() {
                 }
             }
 
-    
     private fun checkVpnPermission() {
         try {
             val vpnIntent = VpnService.prepare(this)
             if (vpnIntent != null) {
-                
                 Log.d(TAG, "VPN permission not granted, requesting...")
                 vpnPermissionResult.launch(vpnIntent)
             } else {
-                
                 Log.d(TAG, "VPN permission already granted")
             }
         } catch (e: Exception) {
@@ -224,7 +321,6 @@ class MainActivity : LoadingActivity() {
                 try {
                     if (result.resultCode == RESULT_OK) {
                         Log.d(TAG, "VPN permission granted!")
-                        
                     } else {
                         Log.w(TAG, "VPN permission denied by user")
                     }
@@ -249,7 +345,6 @@ class MainActivity : LoadingActivity() {
     private fun initToolbarSubTitle() {
         try {
             updateUserRemark(0)
-            
             viewBinding.toolbarLayout.toolbar.getChildAt(1)?.setOnClickListener {
                 try {
                     MaterialDialog(this).show {
@@ -418,7 +513,6 @@ class MainActivity : LoadingActivity() {
                     startActivity(intent)
                 }
                 R.id.fake_location -> {
-                    
                     val intent = Intent(this, FakeManagerActivity::class.java)
                     intent.putExtra("userID", 0)
                     startActivity(intent)
