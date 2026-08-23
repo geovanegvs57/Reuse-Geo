@@ -84,50 +84,29 @@ class AppInstaller(private val context: Context) {
             val baseDir = context.filesDir
             Log.d(TAG, "📂 BaseDir: ${baseDir.absolutePath}")
 
-            // ========== 1. DELETAR A PASTA DE DADOS DO CLONE ==========
-            // Caminhos possíveis onde o BlackBox armazena dados dos clones
-            val caminhos = listOf(
-                File(baseDir, "users/$userId/apps/$packageName"),
-                File(baseDir, "virtual/$userId/$packageName"),
-                File(baseDir, "apps/$packageName"),
-                File(baseDir, "data/$userId/$packageName"),
-                File(context.cacheDir, "users/$userId/$packageName"),
-                File(context.cacheDir, "virtual/$userId/$packageName")
-            )
+            // ========== 1. LISTAR TODAS AS PASTAS PARA DIAGNÓSTICO ==========
+            Log.d(TAG, "📁 LISTANDO TODAS AS PASTAS EM: ${baseDir.absolutePath}")
+            listAllDirectories(baseDir, 0)
 
+            // ========== 2. DELETAR TODAS AS PASTAS QUE CONTENHAM O NOME DO PACOTE ==========
             var encontrou = false
-            for (caminho in caminhos) {
-                if (caminho.exists()) {
-                    Log.d(TAG, "✅ Encontrado: ${caminho.absolutePath}")
-                    deleteRecursive(caminho)
-                    Log.d(TAG, "🗑️ Deletado: ${caminho.absolutePath}")
-                    encontrou = true
-                } else {
-                    Log.d(TAG, "❌ Não encontrado: ${caminho.absolutePath}")
-                }
+            encontrou = deleteAllMatching(baseDir, packageName)
+
+            // ========== 3. DELETAR PASTAS DE CACHE QUE CONTENHAM O NOME DO PACOTE ==========
+            val cacheDir = context.cacheDir
+            if (cacheDir != null) {
+                val cacheDeletado = deleteAllMatching(cacheDir, packageName)
+                if (cacheDeletado) encontrou = true
             }
 
-            // ========== 2. TENTA DELETAR QUALQUER PASTA COM O NOME DO PACOTE ==========
-            val todosArquivos = baseDir.listFiles()
-            if (todosArquivos != null) {
-                for (file in todosArquivos) {
-                    if (file.isDirectory && file.name.contains(packageName)) {
-                        Log.d(TAG, "✅ Encontrado por busca: ${file.absolutePath}")
-                        deleteRecursive(file)
-                        encontrou = true
-                    }
-                }
+            // ========== 4. DELETAR PASTAS NO EXTERNAL FILES DIR ==========
+            val externalFilesDir = context.getExternalFilesDir(null)
+            if (externalFilesDir != null) {
+                val extDeletado = deleteAllMatching(externalFilesDir, packageName)
+                if (extDeletado) encontrou = true
             }
 
-            // ========== 3. DELETAR SHARED PREFERENCES DO CLONE ==========
-            // Tenta deletar preferências compartilhadas do clone (se existirem)
-            val prefsDir = File(baseDir, "users/$userId/apps/$packageName/shared_prefs")
-            if (prefsDir.exists()) {
-                deleteRecursive(prefsDir)
-                Log.d(TAG, "✅ SharedPreferences do clone deletadas")
-            }
-
-            // ========== 4. LIMPAR AS SHARED PREFERENCES DO APP HOSPEDEIRO ==========
+            // ========== 5. LIMPAR AS SHARED PREFERENCES DO APP HOSPEDEIRO ==========
             val prefNames = listOf("trial", "demo", "premium", "vip", "subscription", "license", "activation")
             for (prefName in prefNames) {
                 try {
@@ -141,7 +120,7 @@ class AppInstaller(private val context: Context) {
                 Log.d(TAG, "🔥 RESET TRIAL COMPLETO PARA $packageName (userId=$userId)")
                 Toast.makeText(context, "✅ Reset executado para $packageName", Toast.LENGTH_SHORT).show()
             } else {
-                Log.w(TAG, "⚠️ NENHUM DIRETÓRIO DE DADOS ENCONTRADO PARA $packageName")
+                Log.w(TAG, "⚠️ NENHUMA PASTA DE DADOS ENCONTRADA PARA $packageName")
                 Toast.makeText(context, "⚠️ Reset: dados não encontrados", Toast.LENGTH_SHORT).show()
             }
 
@@ -151,14 +130,66 @@ class AppInstaller(private val context: Context) {
         }
     }
 
+    /**
+     * Lista todas as pastas recursivamente para diagnóstico
+     */
+    private fun listAllDirectories(dir: File, depth: Int) {
+        try {
+            if (!dir.exists()) return
+            val files = dir.listFiles() ?: return
+            val indent = "  ".repeat(depth)
+            for (file in files) {
+                if (file.isDirectory) {
+                    Log.d(TAG, "$indent📁 ${file.name}")
+                    if (depth < 3) { // Limita a profundidade para não poluir muito o log
+                        listAllDirectories(file, depth + 1)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro ao listar diretórios: ${e.message}")
+        }
+    }
+
+    /**
+     * Deleta recursivamente todas as pastas que contêm o nome do pacote
+     */
+    private fun deleteAllMatching(rootDir: File, packageName: String): Boolean {
+        var deletou = false
+        try {
+            if (!rootDir.exists()) return false
+            
+            val files = rootDir.listFiles()
+            if (files == null) return false
+
+            for (file in files) {
+                if (file.isDirectory) {
+                    // Se a pasta contém o nome do pacote, deleta ela inteira
+                    if (file.name.contains(packageName) || file.absolutePath.contains(packageName)) {
+                        Log.d(TAG, "🗑️ Deletando pasta: ${file.absolutePath}")
+                        deleteRecursive(file)
+                        deletou = true
+                    } else {
+                        // Senão, verifica subpastas
+                        val subDeletou = deleteAllMatching(file, packageName)
+                        if (subDeletou) deletou = true
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro ao deletar pastas: ${e.message}")
+        }
+        return deletou
+    }
+
     private fun deleteRecursive(file: File?) {
         if (file == null || !file.exists()) return
         try {
             if (file.isDirectory) {
                 file.listFiles()?.forEach { deleteRecursive(it) }
             }
-            file.delete()
-            Log.d(TAG, "🗑️ Deletado: ${file.absolutePath}")
+            val deleted = file.delete()
+            Log.d(TAG, "🗑️ ${if (deleted) "✅" else "❌"} Deletado: ${file.absolutePath}")
         } catch (e: Exception) {
             Log.e(TAG, "Erro ao deletar ${file?.absolutePath}: ${e.message}")
         }
