@@ -73,7 +73,7 @@ class AppsFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         try {
-            viewBinding.stateView.showEmpty()
+            // viewBinding.stateView.showEmpty() // REMOVIDO - StateView não está mais disponível
 
             mAdapter =
                 RVAdapter<AppInfo>(requireContext(), AppsAdapter()).bind(viewBinding.recyclerView)
@@ -379,16 +379,16 @@ class AppsFragment : Fragment() {
     
     private fun initData() {
         try {
-            viewBinding.stateView.showLoading()
+            // viewBinding.stateView.showLoading() // REMOVIDO - StateView não está mais disponível
             viewModel.getInstalledApps(userID)
             viewModel.appsLiveData.observe(viewLifecycleOwner) {
                 try {
                     if (it != null) {
                         mAdapter.setItems(it)
                         if (it.isEmpty()) {
-                            viewBinding.stateView.showEmpty()
+                            // viewBinding.stateView.showEmpty() // REMOVIDO - StateView não está mais disponível
                         } else {
-                            viewBinding.stateView.showContent()
+                            // viewBinding.stateView.showContent() // REMOVIDO - StateView não está mais disponível
                         }
                     }
                 } catch (e: Exception) {
