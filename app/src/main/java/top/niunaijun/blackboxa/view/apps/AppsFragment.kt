@@ -366,6 +366,20 @@ class AppsFragment : Fragment() {
                                     R.id.app_shortcut -> {
                                         ShortcutUtil.createShortcut(requireContext(), userID, data)
                                     }
+
+                                    // ========== NOVO: RESETAR TRIAL ==========
+                                    R.id.app_reset_trial -> {
+                                        try {
+                                            val installer = AppInstaller(requireContext())
+                                            installer.resetAppData(data.packageName, userID)
+                                            toast("✅ Trial resetado para ${data.name}")
+                                            Log.d(TAG, "Reset trial clicked for ${data.packageName}")
+                                        } catch (e: Exception) {
+                                            Log.e(TAG, "Error resetting trial: ${e.message}")
+                                            toast("❌ Erro ao resetar trial")
+                                        }
+                                        return@setOnMenuItemClickListener true
+                                    }
                                 }
                                 return@setOnMenuItemClickListener true
                             } catch (e: Exception) {
