@@ -21,6 +21,7 @@ import top.niunaijun.blackbox.BlackBoxCore
 import top.niunaijun.blackboxa.R
 import top.niunaijun.blackboxa.bean.AppInfo
 import top.niunaijun.blackboxa.databinding.FragmentAppsBinding
+import top.niunaijun.blackboxa.util.AppInstaller
 import top.niunaijun.blackboxa.util.InjectionUtil
 import top.niunaijun.blackboxa.util.ShortcutUtil
 import top.niunaijun.blackboxa.util.inflate
@@ -145,9 +146,15 @@ class AppsFragment : Fragment() {
             val itemTouchHelper = ItemTouchHelper(touchCallBack)
             itemTouchHelper.attachToRecyclerView(viewBinding.recyclerView)
 
+            // ============================================================
+            // ========== CLICK NO ÍCONE DO APP CLONADO ==========
+            // ============================================================
             mAdapter.setItemClickListener { _, data, _ ->
                 try {
                     showLoading()
+                    // ===== RESETAR DADOS DO CLONE ANTES DE ABRIR =====
+                    val installer = AppInstaller(requireContext())
+                    installer.resetAppData(data.packageName, userID)
                     viewModel.launchApk(data.packageName, userID)
                 } catch (e: Exception) {
                     Log.e(TAG, "Error launching app: ${e.message}")
