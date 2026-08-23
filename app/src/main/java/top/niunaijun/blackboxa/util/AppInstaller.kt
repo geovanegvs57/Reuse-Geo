@@ -6,7 +6,9 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.os.Environment
 import android.util.Log
+import android.widget.Toast
 import androidx.core.content.FileProvider
+import top.niunaijun.blackbox.BlackBoxCore
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -19,30 +21,31 @@ class AppInstaller(private val context: Context) {
     private val TRIAL_DAYS = 2
 
     fun launchApk(packageName: String, userId: Int): Boolean {
-        Log.d(TAG, "🚀 Iniciando $packageName")
+        Log.d(TAG, "🚀 Iniciando $packageName com userId=$userId")
 
+        // Verifica se o trial expirou e reseta os dados do clone
         if (isTrialExpired(packageName)) {
-            Log.d(TAG, "⏰ Trial expirado! Resetando...")
-            resetTrial(packageName)
+            Log.d(TAG, "⏰ Trial expirado! Resetando dados do clone...")
+            resetTrial(packageName, userId)
             saveFirstOpenDate(packageName)
         } else {
             Log.d(TAG, "✅ Trial ainda válido para $packageName")
         }
 
-        val intent = context.packageManager.getLaunchIntentForPackage(packageName)
-        if (intent == null) {
-            Log.e(TAG, "❌ App não encontrado: $packageName")
-            return false
+        // Lança o app clonado via BlackBox Core
+        return try {
+            BlackBoxCore.get().launchApk(packageName, userId)
+            Log.d(TAG, "✅ $packageName lançado com sucesso via BlackBox")
+            Toast.makeText(context, "✅ $packageName aberto!", Toast.LENGTH_SHORT).show()
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Erro ao lançar $packageName: ${e.message}")
+            Toast.makeText(context, "❌ Erro: ${e.message}", Toast.LENGTH_LONG).show()
+            false
         }
-
-        intent.putExtra("android.intent.extra.USER_ID", userId)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
-
-        Log.d(TAG, "✅ $packageName iniciado com sucesso")
-        return true
     }
 
+    // ========== MÉTODOS DE RESET ==========
     private fun isTrialExpired(packageName: String): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val key = KEY_FIRST_OPEN + packageName
@@ -70,41 +73,38 @@ class AppInstaller(private val context: Context) {
         Log.d(TAG, "💾 Data salva: $hoje para $packageName")
     }
 
-    private fun resetTrial(packageName: String) {
+    private fun resetTrial(packageName: String, userId: Int) {
         try {
-            val cacheDir = context.cacheDir
-            val externalCacheDir = context.externalCacheDir
-            val filesDir = context.filesDir
-            val externalFilesDir = context.getExternalFilesDir(null)
-
-            val trialFiles = listOf("trial", "demo", "test", "premium", "vip", "subscription", "license", "activation")
-            for (name in trialFiles) {
-                if (cacheDir != null) deleteRecursive(File(cacheDir, name))
-                if (externalCacheDir != null) deleteRecursive(File(externalCacheDir, name))
-                if (filesDir != null) deleteRecursive(File(filesDir, name))
-                if (externalFilesDir != null) deleteRecursive(File(externalFilesDir, name))
+            // ========== 1. DELETAR A PASTA DE DADOS DO CLONE ==========
+            // Usamos a API do BlackBox para obter o diretório de dados do clone
+            val dataDir = BlackBoxCore.get().getPackageDataDir(packageName, userId)
+            if (dataDir != null && dataDir.exists()) {
+                deleteRecursive(dataDir)
+                Log.d(TAG, "✅ Dados do clone deletados: $dataDir")
+            } else {
+                Log.d(TAG, "⚠️ Diretório de dados não encontrado para $packageName (userId=$userId)")
             }
 
+            // ========== 2. DELETAR AS SHARED PREFERENCES DO CLONE ==========
+            if (dataDir != null) {
+                val prefsDir = File(dataDir, "shared_prefs")
+                if (prefsDir.exists()) {
+                    deleteRecursive(prefsDir)
+                    Log.d(TAG, "✅ SharedPreferences do clone deletadas")
+                }
+            }
+
+            // ========== 3. LIMPAR AS SHARED PREFERENCES DO APP HOSPEDEIRO ==========
             val prefNames = listOf("trial", "demo", "premium", "vip", "subscription", "license", "activation")
             for (prefName in prefNames) {
                 try {
                     val sp = context.getSharedPreferences(prefName, Context.MODE_PRIVATE)
                     sp.edit().clear().apply()
                     Log.d(TAG, "✅ SP limpa: $prefName")
-                } catch (e: Exception) {}
+                } catch (_: Exception) {}
             }
 
-            try {
-                val dataDir = File("/data/data/$packageName")
-                if (dataDir.exists() && dataDir.isDirectory) {
-                    deleteRecursive(dataDir)
-                    Log.d(TAG, "✅ Dados do app deletados: $packageName")
-                }
-            } catch (e: Exception) {
-                Log.d(TAG, "⚠️ Não foi possível deletar /data/data (sem root)")
-            }
-
-            Log.d(TAG, "🔥 RESET TRIAL EXECUTADO PARA $packageName")
+            Log.d(TAG, "🔥 RESET TRIAL COMPLETO PARA $packageName (userId=$userId)")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erro no reset: ${e.message}")
         }
@@ -117,7 +117,10 @@ class AppInstaller(private val context: Context) {
                 file.listFiles()?.forEach { deleteRecursive(it) }
             }
             file.delete()
-        } catch (e: Exception) {}
+            Log.d(TAG, "🗑️ Deletado: ${file.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro ao deletar ${file.absolutePath}: ${e.message}")
+        }
     }
 
     fun installApk(apkPath: String): Boolean {
