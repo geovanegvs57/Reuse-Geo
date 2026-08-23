@@ -42,6 +42,15 @@ class AppInstaller(private val context: Context) {
         }
     }
 
+    // ========== MÉTODO PÚBLICO PARA RESET ==========
+    /**
+     * Método público para resetar os dados de um app clonado.
+     * Pode ser chamado de qualquer lugar (ex: AppsFragment).
+     */
+    fun resetAppData(packageName: String, userId: Int) {
+        resetTrial(packageName, userId)
+    }
+
     // ========== MÉTODOS DE RESET ==========
     private fun isTrialExpired(packageName: String): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -72,42 +81,53 @@ class AppInstaller(private val context: Context) {
 
     private fun resetTrial(packageName: String, userId: Int) {
         try {
-            // ========== 1. DELETAR A PASTA DE DADOS DO CLONE ==========
-            // Os dados dos clones ficam em: /data/data/<pacote_do_blackbox>/files/users/{userId}/apps/{packageName}
             val baseDir = context.filesDir
+            Log.d(TAG, "📂 BaseDir: ${baseDir.absolutePath}")
 
-            // Tenta o caminho padrão do BlackBox
-            val dataDir = File(baseDir, "users/$userId/apps/$packageName")
-            if (dataDir.exists()) {
-                deleteRecursive(dataDir)
-                Log.d(TAG, "✅ Dados do clone deletados: ${dataDir.absolutePath}")
-            } else {
-                // Tenta o caminho alternativo (algumas versões usam "virtual")
-                val altDir = File(baseDir, "virtual/$userId/$packageName")
-                if (altDir.exists()) {
-                    deleteRecursive(altDir)
-                    Log.d(TAG, "✅ Dados do clone (alternativo) deletados: ${altDir.absolutePath}")
+            // ========== 1. DELETAR A PASTA DE DADOS DO CLONE ==========
+            // Caminhos possíveis onde o BlackBox armazena dados dos clones
+            val caminhos = listOf(
+                File(baseDir, "users/$userId/apps/$packageName"),
+                File(baseDir, "virtual/$userId/$packageName"),
+                File(baseDir, "apps/$packageName"),
+                File(baseDir, "data/$userId/$packageName"),
+                File(context.cacheDir, "users/$userId/$packageName"),
+                File(context.cacheDir, "virtual/$userId/$packageName")
+            )
+
+            var encontrou = false
+            for (caminho in caminhos) {
+                if (caminho.exists()) {
+                    Log.d(TAG, "✅ Encontrado: ${caminho.absolutePath}")
+                    deleteRecursive(caminho)
+                    Log.d(TAG, "🗑️ Deletado: ${caminho.absolutePath}")
+                    encontrou = true
                 } else {
-                    Log.d(TAG, "⚠️ Diretório de dados não encontrado para $packageName (userId=$userId)")
-                    // Tenta deletar pastas de cache relacionadas
-                    val cacheDir = context.cacheDir
-                    if (cacheDir != null) {
-                        deleteRecursive(File(cacheDir, packageName))
-                    }
-                    context.externalCacheDir?.let {
-                        deleteRecursive(File(it, packageName))
+                    Log.d(TAG, "❌ Não encontrado: ${caminho.absolutePath}")
+                }
+            }
+
+            // ========== 2. TENTA DELETAR QUALQUER PASTA COM O NOME DO PACOTE ==========
+            val todosArquivos = baseDir.listFiles()
+            if (todosArquivos != null) {
+                for (file in todosArquivos) {
+                    if (file.isDirectory && file.name.contains(packageName)) {
+                        Log.d(TAG, "✅ Encontrado por busca: ${file.absolutePath}")
+                        deleteRecursive(file)
+                        encontrou = true
                     }
                 }
             }
 
-            // ========== 2. DELETAR AS SHARED PREFERENCES DO CLONE (se existirem) ==========
-            val prefsDir = File(dataDir, "shared_prefs")
+            // ========== 3. DELETAR SHARED PREFERENCES DO CLONE ==========
+            // Tenta deletar preferências compartilhadas do clone (se existirem)
+            val prefsDir = File(baseDir, "users/$userId/apps/$packageName/shared_prefs")
             if (prefsDir.exists()) {
                 deleteRecursive(prefsDir)
                 Log.d(TAG, "✅ SharedPreferences do clone deletadas")
             }
 
-            // ========== 3. LIMPAR AS SHARED PREFERENCES DO APP HOSPEDEIRO ==========
+            // ========== 4. LIMPAR AS SHARED PREFERENCES DO APP HOSPEDEIRO ==========
             val prefNames = listOf("trial", "demo", "premium", "vip", "subscription", "license", "activation")
             for (prefName in prefNames) {
                 try {
@@ -117,9 +137,17 @@ class AppInstaller(private val context: Context) {
                 } catch (_: Exception) {}
             }
 
-            Log.d(TAG, "🔥 RESET TRIAL COMPLETO PARA $packageName (userId=$userId)")
+            if (encontrou) {
+                Log.d(TAG, "🔥 RESET TRIAL COMPLETO PARA $packageName (userId=$userId)")
+                Toast.makeText(context, "✅ Reset executado para $packageName", Toast.LENGTH_SHORT).show()
+            } else {
+                Log.w(TAG, "⚠️ NENHUM DIRETÓRIO DE DADOS ENCONTRADO PARA $packageName")
+                Toast.makeText(context, "⚠️ Reset: dados não encontrados", Toast.LENGTH_SHORT).show()
+            }
+
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erro no reset: ${e.message}")
+            Toast.makeText(context, "❌ Erro no reset: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
