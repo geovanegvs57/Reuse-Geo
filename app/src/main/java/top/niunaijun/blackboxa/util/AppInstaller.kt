@@ -43,10 +43,6 @@ class AppInstaller(private val context: Context) {
     }
 
     // ========== MÉTODO PÚBLICO PARA RESET ==========
-    /**
-     * Método público para resetar os dados de um app clonado.
-     * Pode ser chamado de qualquer lugar (ex: AppsFragment).
-     */
     fun resetAppData(packageName: String, userId: Int) {
         resetTrial(packageName, userId)
     }
@@ -84,19 +80,7 @@ class AppInstaller(private val context: Context) {
             Log.d(TAG, "🔥 resetTrial chamado para $packageName (userId=$userId)")
 
             // ============================================================
-            // ===== 1. FORÇAR RECRIAÇÃO DO AMBIENTE BLACKBOX =====
-            // ============================================================
-            try {
-                // Remove e recria o usuário para gerar NOVOS IDs
-                BlackBoxCore.get().getUserManager().removeUser(userId)
-                BlackBoxCore.get().getUserManager().createUser(userId)
-                Log.d(TAG, "✅ Usuário $userId recriado com novos IDs")
-            } catch (e: Exception) {
-                Log.w(TAG, "⚠️ Erro ao recriar usuário: ${e.message}")
-            }
-
-            // ============================================================
-            // ===== 2. DELETAR TODAS AS PASTAS DO CLONE =====
+            // ===== 1. DELETAR TODAS AS PASTAS DO CLONE =====
             // ============================================================
             val baseDir = context.filesDir
             val cacheDir = context.cacheDir
@@ -112,11 +96,7 @@ class AppInstaller(private val context: Context) {
                 File(baseDir, "apps/$packageName"),
                 File(baseDir, "data/$userId/$packageName"),
                 File(cacheDir, "users/$userId/$packageName"),
-                File(cacheDir, "virtual/$userId/$packageName"),
-                File(baseDir, "users/$userId/dalvik-cache/$packageName"),
-                File(baseDir, "users/$userId/cache/$packageName"),
-                File(baseDir, "users/$userId/$packageName"),
-                File(baseDir, "package/$packageName")
+                File(cacheDir, "virtual/$userId/$packageName")
             )
 
             // Adiciona caminhos com external se não forem nulos
@@ -142,7 +122,7 @@ class AppInstaller(private val context: Context) {
             }
 
             // ============================================================
-            // ===== 3. DELETAR PASTAS POR NOME DO PACOTE (BUSCA RECURSIVA) =====
+            // ===== 2. DELETAR PASTAS POR NOME DO PACOTE (BUSCA RECURSIVA) =====
             // ============================================================
             val dirsToSearch = listOfNotNull(baseDir, cacheDir, externalFilesDir, externalCacheDir)
             for (dir in dirsToSearch) {
@@ -151,12 +131,11 @@ class AppInstaller(private val context: Context) {
             }
 
             // ============================================================
-            // ===== 4. LIMPAR SHARED PREFERENCES =====
+            // ===== 3. LIMPAR SHARED PREFERENCES =====
             // ============================================================
             val prefNames = listOf(
                 "trial", "demo", "premium", "vip", "subscription", 
-                "license", "activation", "user_data", "prefs", "settings",
-                "unitv", "youcine", "stv", "bras", "nova"
+                "license", "activation", "user_data", "prefs", "settings"
             )
             for (prefName in prefNames) {
                 try {
@@ -164,28 +143,6 @@ class AppInstaller(private val context: Context) {
                     sp.edit().clear().apply()
                     Log.d(TAG, "✅ SP limpa: $prefName")
                 } catch (_: Exception) {}
-            }
-
-            // ============================================================
-            // ===== 5. LIMPAR CACHE DO SISTEMA VIA BLACKBOX =====
-            // ============================================================
-            try {
-                // Tenta limpar os dados do app clonado via BlackBox
-                BlackBoxCore.get().clearAppData(packageName, userId)
-                Log.d(TAG, "✅ clearAppData executado para $packageName")
-            } catch (e: Exception) {
-                Log.d(TAG, "⚠️ clearAppData não disponível: ${e.message}")
-            }
-
-            // ============================================================
-            // ===== 6. RECARREGAR O AMBIENTE BLACKBOX =====
-            // ============================================================
-            try {
-                // Força o BlackBox a recarregar o ambiente
-                BlackBoxCore.get().reload()
-                Log.d(TAG, "✅ BlackBox recarregado")
-            } catch (e: Exception) {
-                Log.w(TAG, "⚠️ Erro ao recarregar BlackBox: ${e.message}")
             }
 
             if (encontrou) {
