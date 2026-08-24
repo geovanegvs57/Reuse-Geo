@@ -2,6 +2,8 @@ package top.niunaijun.blackboxa.view.apps
 
 import android.graphics.Point
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.TextUtils
 import android.util.Log
 import android.view.LayoutInflater
@@ -31,8 +33,6 @@ import top.niunaijun.blackboxa.view.base.LoadingActivity
 import top.niunaijun.blackboxa.view.main.MainActivity
 import java.util.*
 import kotlin.math.abs
-
-
 
 class AppsFragment : Fragment() {
 
@@ -535,6 +535,13 @@ class AppsFragment : Fragment() {
         try {
             showLoading()
             viewModel.install(source, userID)
+            
+            // ===== RECARREGAR A LISTA APÓS INSTALAÇÃO =====
+            Handler(Looper.getMainLooper()).postDelayed({
+                viewModel.getInstalledApps(userID)
+                Log.d(TAG, "Lista recarregada após instalação do APK")
+            }, 500)
+            
         } catch (e: Exception) {
             Log.e(TAG, "Error installing APK: ${e.message}")
             hideLoading()
