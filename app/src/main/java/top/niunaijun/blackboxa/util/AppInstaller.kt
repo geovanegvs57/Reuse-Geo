@@ -81,39 +81,111 @@ class AppInstaller(private val context: Context) {
 
     private fun resetTrial(packageName: String, userId: Int) {
         try {
+            Log.d(TAG, "🔥 resetTrial chamado para $packageName (userId=$userId)")
+
+            // ============================================================
+            // ===== 1. FORÇAR RECRIAÇÃO DO AMBIENTE BLACKBOX =====
+            // ============================================================
+            try {
+                // Remove e recria o usuário para gerar NOVOS IDs
+                BlackBoxCore.get().getUserManager().removeUser(userId)
+                BlackBoxCore.get().getUserManager().createUser(userId)
+                Log.d(TAG, "✅ Usuário $userId recriado com novos IDs")
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Erro ao recriar usuário: ${e.message}")
+            }
+
+            // ============================================================
+            // ===== 2. DELETAR TODAS AS PASTAS DO CLONE =====
+            // ============================================================
             val baseDir = context.filesDir
+            val cacheDir = context.cacheDir
+            val externalFilesDir = context.getExternalFilesDir(null)
+            val externalCacheDir = context.externalCacheDir
+
             Log.d(TAG, "📂 BaseDir: ${baseDir.absolutePath}")
 
-            // ========== 1. LISTAR TODAS AS PASTAS PARA DIAGNÓSTICO ==========
-            Log.d(TAG, "📁 LISTANDO TODAS AS PASTAS EM: ${baseDir.absolutePath}")
-            listAllDirectories(baseDir, 0)
+            // Lista de caminhos possíveis para dados do clone
+            val caminhos = mutableListOf(
+                File(baseDir, "users/$userId/apps/$packageName"),
+                File(baseDir, "virtual/$userId/$packageName"),
+                File(baseDir, "apps/$packageName"),
+                File(baseDir, "data/$userId/$packageName"),
+                File(cacheDir, "users/$userId/$packageName"),
+                File(cacheDir, "virtual/$userId/$packageName"),
+                File(baseDir, "users/$userId/dalvik-cache/$packageName"),
+                File(baseDir, "users/$userId/cache/$packageName"),
+                File(baseDir, "users/$userId/$packageName"),
+                File(baseDir, "package/$packageName")
+            )
 
-            // ========== 2. DELETAR TODAS AS PASTAS QUE CONTENHAM O NOME DO PACOTE ==========
+            // Adiciona caminhos com external se não forem nulos
+            externalFilesDir?.let {
+                caminhos.add(File(it, "users/$userId/apps/$packageName"))
+                caminhos.add(File(it, "virtual/$userId/$packageName"))
+                caminhos.add(File(it, "apps/$packageName"))
+            }
+            externalCacheDir?.let {
+                caminhos.add(File(it, "users/$userId/apps/$packageName"))
+                caminhos.add(File(it, "virtual/$userId/$packageName"))
+            }
+
             var encontrou = false
-            encontrou = deleteAllMatching(baseDir, packageName)
-
-            // ========== 3. DELETAR PASTAS DE CACHE QUE CONTENHAM O NOME DO PACOTE ==========
-            val cacheDir = context.cacheDir
-            if (cacheDir != null) {
-                val cacheDeletado = deleteAllMatching(cacheDir, packageName)
-                if (cacheDeletado) encontrou = true
+            for (caminho in caminhos) {
+                if (caminho.exists()) {
+                    Log.d(TAG, "✅ Encontrado: ${caminho.absolutePath}")
+                    deleteRecursive(caminho)
+                    encontrou = true
+                } else {
+                    Log.d(TAG, "❌ Não encontrado: ${caminho.absolutePath}")
+                }
             }
 
-            // ========== 4. DELETAR PASTAS NO EXTERNAL FILES DIR ==========
-            val externalFilesDir = context.getExternalFilesDir(null)
-            if (externalFilesDir != null) {
-                val extDeletado = deleteAllMatching(externalFilesDir, packageName)
-                if (extDeletado) encontrou = true
+            // ============================================================
+            // ===== 3. DELETAR PASTAS POR NOME DO PACOTE (BUSCA RECURSIVA) =====
+            // ============================================================
+            val dirsToSearch = listOfNotNull(baseDir, cacheDir, externalFilesDir, externalCacheDir)
+            for (dir in dirsToSearch) {
+                val encontrouSub = deleteAllMatching(dir, packageName)
+                if (encontrouSub) encontrou = true
             }
 
-            // ========== 5. LIMPAR AS SHARED PREFERENCES DO APP HOSPEDEIRO ==========
-            val prefNames = listOf("trial", "demo", "premium", "vip", "subscription", "license", "activation")
+            // ============================================================
+            // ===== 4. LIMPAR SHARED PREFERENCES =====
+            // ============================================================
+            val prefNames = listOf(
+                "trial", "demo", "premium", "vip", "subscription", 
+                "license", "activation", "user_data", "prefs", "settings",
+                "unitv", "youcine", "stv", "bras", "nova"
+            )
             for (prefName in prefNames) {
                 try {
                     val sp = context.getSharedPreferences(prefName, Context.MODE_PRIVATE)
                     sp.edit().clear().apply()
                     Log.d(TAG, "✅ SP limpa: $prefName")
                 } catch (_: Exception) {}
+            }
+
+            // ============================================================
+            // ===== 5. LIMPAR CACHE DO SISTEMA VIA BLACKBOX =====
+            // ============================================================
+            try {
+                // Tenta limpar os dados do app clonado via BlackBox
+                BlackBoxCore.get().clearAppData(packageName, userId)
+                Log.d(TAG, "✅ clearAppData executado para $packageName")
+            } catch (e: Exception) {
+                Log.d(TAG, "⚠️ clearAppData não disponível: ${e.message}")
+            }
+
+            // ============================================================
+            // ===== 6. RECARREGAR O AMBIENTE BLACKBOX =====
+            // ============================================================
+            try {
+                // Força o BlackBox a recarregar o ambiente
+                BlackBoxCore.get().reload()
+                Log.d(TAG, "✅ BlackBox recarregado")
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Erro ao recarregar BlackBox: ${e.message}")
             }
 
             if (encontrou) {
@@ -127,27 +199,6 @@ class AppInstaller(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erro no reset: ${e.message}")
             Toast.makeText(context, "❌ Erro no reset: ${e.message}", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    /**
-     * Lista todas as pastas recursivamente para diagnóstico
-     */
-    private fun listAllDirectories(dir: File, depth: Int) {
-        try {
-            if (!dir.exists()) return
-            val files = dir.listFiles() ?: return
-            val indent = "  ".repeat(depth)
-            for (file in files) {
-                if (file.isDirectory) {
-                    Log.d(TAG, "$indent📁 ${file.name}")
-                    if (depth < 3) { // Limita a profundidade para não poluir muito o log
-                        listAllDirectories(file, depth + 1)
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Erro ao listar diretórios: ${e.message}")
         }
     }
 
