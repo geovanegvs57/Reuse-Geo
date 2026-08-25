@@ -9,12 +9,18 @@ import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import top.niunaijun.blackbox.BlackBoxCore;
 import top.niunaijun.blackbox.app.BActivityThread;
 import top.niunaijun.blackbox.entity.AppConfig;
 import top.niunaijun.blackbox.utils.compat.BundleCompat;
 
-
+/**
+ * Created by Milk on 3/30/21.
+ * * ∧＿∧
+ * (`･ω･∥
+ * 丶　つ０
+ * しーＪ
+ * 此处无Bug
+ */
 public class ProxyContentProvider extends ContentProvider {
     @Override
     public boolean onCreate() {
@@ -28,10 +34,10 @@ public class ProxyContentProvider extends ContentProvider {
             assert extras != null;
             extras.setClassLoader(AppConfig.class.getClassLoader());
             AppConfig appConfig = extras.getParcelable(AppConfig.KEY);
-            BlackBoxCore.currentActivityThread().initProcess(appConfig);
+            BActivityThread.currentActivityThread().initProcess(appConfig);
 
             Bundle bundle = new Bundle();
-            BundleCompat.putBinder(bundle, "_Black_|_client_", BlackBoxCore.currentActivityThread());
+            BundleCompat.putBinder(bundle, "_Black_|_client_", BActivityThread.currentActivityThread());
             return bundle;
         }
         return super.call(method, arg, extras);

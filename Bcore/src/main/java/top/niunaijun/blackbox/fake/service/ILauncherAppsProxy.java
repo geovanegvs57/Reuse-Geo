@@ -9,7 +9,14 @@ import black.android.os.BRServiceManager;
 import top.niunaijun.blackbox.fake.hook.BinderInvocationStub;
 import top.niunaijun.blackbox.utils.MethodParameterUtils;
 
-
+/**
+ * Created by Milk on 4/13/21.
+ * * ∧＿∧
+ * (`･ω･∥
+ * 丶　つ０
+ * しーＪ
+ * 此处无Bug
+ */
 public class ILauncherAppsProxy extends BinderInvocationStub {
 
     public ILauncherAppsProxy() {
@@ -39,7 +46,7 @@ public class ILauncherAppsProxy extends BinderInvocationStub {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         MethodParameterUtils.replaceFirstAppPkg(args);
-        
+        // todo shouldHideFromSuggestions
         return super.invoke(proxy, method, args);
     }
 

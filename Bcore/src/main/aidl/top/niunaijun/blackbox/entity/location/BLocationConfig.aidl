@@ -1,3 +1,3 @@
-package top.niunaijun.blackbox.entity.location;
+package top.niunaijun.blackbox.core.system.location;
 
 parcelable BLocationConfig;

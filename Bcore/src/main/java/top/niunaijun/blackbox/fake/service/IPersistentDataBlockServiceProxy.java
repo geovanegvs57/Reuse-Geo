@@ -6,7 +6,9 @@ import black.android.service.persistentdata.BRIPersistentDataBlockServiceStub;
 import top.niunaijun.blackbox.fake.hook.BinderInvocationStub;
 import top.niunaijun.blackbox.fake.service.base.ValueMethodProxy;
 
-
+/**
+ * Created by BlackBox on 2022/3/8.
+ */
 public class IPersistentDataBlockServiceProxy extends BinderInvocationStub {
 
     public static final String NAME = "persistent_data_block";

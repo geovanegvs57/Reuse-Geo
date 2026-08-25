@@ -5,7 +5,9 @@ import android.util.Log;
 
 import java.lang.reflect.Field;
 
-
+/**
+ * Created by BlackBox on 2022/2/20.
+ */
 public class QQUtils {
     public static void hackLog(Context context) {
         try {

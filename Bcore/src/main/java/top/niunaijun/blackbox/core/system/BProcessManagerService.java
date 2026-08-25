@@ -33,7 +33,14 @@ import top.niunaijun.blackbox.utils.compat.ApplicationThreadCompat;
 import top.niunaijun.blackbox.utils.compat.BundleCompat;
 import top.niunaijun.blackbox.utils.provider.ProviderCall;
 
-
+/**
+ * Created by Milk on 4/2/21.
+ * * ∧＿∧
+ * (`･ω･∥
+ * 丶　つ０
+ * しーＪ
+ * 此处无Bug
+ */
 public class BProcessManagerService implements ISystemService {
     public static final String TAG = "BProcessManager";
 
@@ -84,11 +91,9 @@ public class BProcessManagerService implements ISystemService {
             bProcess.put(processName, app);
             mPidsSelfLocked.add(app);
 
-            synchronized (mProcessMap) {
-                mProcessMap.put(buid, bProcess);
-            }
+            mProcessMap.put(buid, bProcess);
             if (!initAppProcessL(app)) {
-                
+                //init process fail
                 bProcess.remove(processName);
                 mPidsSelfLocked.remove(app);
                 app = null;
@@ -120,7 +125,10 @@ public class BProcessManagerService implements ISystemService {
         synchronized (mProcessLock) {
             int callingUid = Binder.getCallingUid();
             int callingPid = Binder.getCallingPid();
-            ProcessRecord app = findProcessByPid(callingPid);;
+            ProcessRecord app;
+            synchronized (mProcessLock) {
+                app = findProcessByPid(callingPid);
+            }
             if (app == null) {
                 String stubProcessName = getProcessName(BlackBoxCore.getContext(), callingPid);
                 int bpid = parseBPid(stubProcessName);
@@ -140,7 +148,7 @@ public class BProcessManagerService implements ISystemService {
             try {
                 return Integer.parseInt(stubProcessName.substring(prefix.length()));
             } catch (NumberFormatException e) {
-                
+                // ignore
             }
         }
         return -1;
@@ -207,7 +215,7 @@ public class BProcessManagerService implements ISystemService {
     }
 
     public ProcessRecord findProcessRecord(String packageName, String processName, int userId) {
-        synchronized (mProcessMap) {
+        synchronized (mProcessLock) {
             int appId = BPackageManagerService.get().getAppId(packageName);
             int buid = BUserHandle.getUid(userId, appId);
             Map<String, ProcessRecord> processRecordMap = mProcessMap.get(buid);
@@ -251,7 +259,7 @@ public class BProcessManagerService implements ISystemService {
     }
 
     public List<ProcessRecord> getPackageProcessAsUser(String packageName, int userId) {
-        synchronized (mProcessMap) {
+        synchronized (mProcessLock) {
             int buid = BUserHandle.getUid(userId, BPackageManagerService.get().getAppId(packageName));
             Map<String, ProcessRecord> process = mProcessMap.get(buid);
             if (process == null)
@@ -261,19 +269,23 @@ public class BProcessManagerService implements ISystemService {
     }
 
     public int getBUidByPidOrPackageName(int pid, String packageName) {
-        ProcessRecord callingProcess = findProcessByPid(pid);
-        if (callingProcess == null) {
-            return BPackageManagerService.get().getAppId(packageName);
+        synchronized (mProcessLock) {
+            ProcessRecord callingProcess = BProcessManagerService.get().findProcessByPid(pid);
+            if (callingProcess == null) {
+                return BPackageManagerService.get().getAppId(packageName);
+            }
+            return BUserHandle.getAppId(callingProcess.buid);
         }
-        return BUserHandle.getAppId(callingProcess.buid);
     }
 
     public int getUserIdByCallingPid(int callingPid) {
-        ProcessRecord callingProcess = findProcessByPid(callingPid);
-        if (callingProcess == null) {
-            return 0;
+        synchronized (mProcessLock) {
+            ProcessRecord callingProcess = BProcessManagerService.get().findProcessByPid(callingPid);
+            if (callingProcess == null) {
+                return 0;
+            }
+            return callingProcess.userId;
         }
-        return callingProcess.userId;
     }
 
     public ProcessRecord findProcessByPid(int pid) {

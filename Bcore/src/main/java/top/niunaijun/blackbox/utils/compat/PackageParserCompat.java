@@ -52,7 +52,7 @@ public class PackageParserCompat {
 
     public static void collectCertificates(PackageParser parser, Package p, int flags) throws Throwable {
         if (BuildCompat.isPie()) {
-            BRPackageParserPie.getWithException().collectCertificates(p, true);
+            BRPackageParserPie.getWithException().collectCertificates(p, true/*skipVerify*/);
         } else if (API_LEVEL >= N) {
             BRPackageParserNougat.getWithException().collectCertificates(p, flags);
         } else if (API_LEVEL >= M) {

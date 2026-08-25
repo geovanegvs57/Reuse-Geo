@@ -20,16 +20,15 @@ public class TaskDescriptionCompat {
         if (label != null && icon != null)
             return td;
 
-        label = getTaskDescriptionLabel(BlackBoxCore.getUserId(), getApplicationLabel());
-        
-        
-        
-        
+        label = getTaskDescriptionLabel(BActivityThread.getUserId(), getApplicationLabel());
+        Drawable drawable = getApplicationIcon();
+        if (drawable == null)
+            return td;
 
-        
-        
-        
-        td = new ActivityManager.TaskDescription(label, null, td.getPrimaryColor());
+        ActivityManager am = (ActivityManager) BlackBoxCore.getContext().getSystemService(Context.ACTIVITY_SERVICE);
+        int iconSize = am.getLauncherLargeIconSize();
+        icon = DrawableUtils.drawableToBitmap(drawable, iconSize, iconSize);
+        td = new ActivityManager.TaskDescription(label, icon, td.getPrimaryColor());
         return td;
     }
 
@@ -40,7 +39,7 @@ public class TaskDescriptionCompat {
     private static CharSequence getApplicationLabel() {
         try {
             PackageManager pm = BlackBoxCore.getPackageManager();
-            return pm.getApplicationLabel(pm.getApplicationInfo(BlackBoxCore.getAppPackageName(), 0));
+            return pm.getApplicationLabel(pm.getApplicationInfo(BActivityThread.getAppPackageName(), 0));
         } catch (PackageManager.NameNotFoundException e) {
             return null;
         }
@@ -48,9 +47,8 @@ public class TaskDescriptionCompat {
 
     private static Drawable getApplicationIcon() {
         try {
-            
-            return null;
-        } catch (Exception ignore) {
+            return BlackBoxCore.getPackageManager().getApplicationIcon(BActivityThread.getAppPackageName());
+        } catch (PackageManager.NameNotFoundException ignore) {
             return null;
         }
     }

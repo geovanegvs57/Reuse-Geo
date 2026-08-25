@@ -1,3 +1,7 @@
+//
+// Created by Milk on 4/9/21.
+//
+
 #ifndef VIRTUALM_BASEHOOK_H
 #define VIRTUALM_BASEHOOK_H
 
@@ -10,4 +14,4 @@ public:
 };
 
 
-#endif 
+#endif //VIRTUALM_BASEHOOK_H

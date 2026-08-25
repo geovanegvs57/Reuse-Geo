@@ -16,15 +16,21 @@ import android.view.WindowManager;
 
 import black.android.app.BRActivity;
 import black.com.android.internal.BRRstyleable;
-import top.niunaijun.blackbox.BlackBoxCore;
 import top.niunaijun.blackbox.app.BActivityThread;
 import top.niunaijun.blackbox.utils.DrawableUtils;
 
-
+/**
+ * Created by Milk on 3/31/21.
+ * * ∧＿∧
+ * (`･ω･∥
+ * 丶　つ０
+ * しーＪ
+ * 此处无Bug
+ */
 public class ActivityCompat {
 
     public static void fix(Activity activity) {
-        
+        // mContentResolver
         BRActivity.get(activity).mActivityInfo();
 
         Context baseContext = activity.getBaseContext();
@@ -53,7 +59,7 @@ public class ActivityCompat {
             if (intent != null && activity.isTaskRoot()) {
                 try {
                     String label = TaskDescriptionCompat.getTaskDescriptionLabel(
-                            BlackBoxCore.getUserId(), applicationInfo.loadLabel(pm));
+                            BActivityThread.getUserId(), applicationInfo.loadLabel(pm));
 
                     Bitmap icon = null;
                     Drawable drawable = getActivityIcon(activity);

@@ -19,7 +19,14 @@ import top.niunaijun.blackbox.proxy.record.ProxyServiceRecord;
 import static android.app.Service.START_NOT_STICKY;
 
 
-
+/**
+ * Created by Milk on 4/1/21.
+ * * ∧＿∧
+ * (`･ω･∥
+ * 丶　つ０
+ * しーＪ
+ * 此处无Bug
+ */
 public class AppServiceDispatcher {
     public static final String TAG = "AppServiceDispatcher";
 
@@ -41,7 +48,7 @@ public class AppServiceDispatcher {
         if (intent == null || serviceInfo == null)
             return null;
 
-
+//        Log.d(TAG, "onBind: " + component.toString());
 
         Service service = getOrCreateService(serviceRecord);
         if (service == null)
@@ -74,7 +81,7 @@ public class AppServiceDispatcher {
             return START_NOT_STICKY;
         }
 
-
+//        Log.d(TAG, "onStartCommand: " + component.toString());
         Service service = getOrCreateService(stubRecord);
         if (service == null)
             return START_NOT_STICKY;
@@ -102,7 +109,7 @@ public class AppServiceDispatcher {
             }
         }
         mService.clear();
-
+//        Log.d(TAG, "onDestroy: ");
     }
 
     public void onConfigurationChanged(Configuration newConfig) {
@@ -115,7 +122,7 @@ public class AppServiceDispatcher {
                 }
             }
         }
-
+//        Log.d(TAG, "onConfigurationChanged");
     }
 
     public void onLowMemory() {
@@ -128,7 +135,7 @@ public class AppServiceDispatcher {
                 }
             }
         }
-
+//        Log.d(TAG, "onLowMemory");
     }
 
     public void onTrimMemory(int level) {
@@ -141,7 +148,7 @@ public class AppServiceDispatcher {
                 }
             }
         }
-        
+        // Log.d(TAG, "onTrimMemory");
     }
 
     public boolean onUnbind(Intent proxyIntent) {
@@ -152,7 +159,7 @@ public class AppServiceDispatcher {
         Intent intent = stubRecord.mServiceIntent;
 
         try {
-            UnbindRecord unbindRecord = BlackBoxCore.getBActivityManager().onServiceUnbind(proxyIntent, BlackBoxCore.getUserId());
+            UnbindRecord unbindRecord = BlackBoxCore.getBActivityManager().onServiceUnbind(proxyIntent, BActivityThread.getUserId());
             if (unbindRecord == null)
                 return false;
 
@@ -169,11 +176,11 @@ public class AppServiceDispatcher {
                 boolean b = service.onUnbind(intent);
                 if (destroy) {
                     service.onDestroy();
-                    BlackBoxCore.getBActivityManager().onServiceDestroy(proxyIntent, BlackBoxCore.getUserId());
+                    BlackBoxCore.getBActivityManager().onServiceDestroy(proxyIntent, BActivityThread.getUserId());
                     mService.remove(new Intent.FilterComparison(intent));
                 }
                 record.setRebind(true);
-
+//                Log.d(TAG, "onUnbind：" + stubRecord.mServiceIntent.getComponent().toString());
             }
         } catch (Throwable e) {
             e.printStackTrace();
@@ -200,7 +207,7 @@ public class AppServiceDispatcher {
             try {
                 if (destroy) {
                     mHandler.post(() -> record.getService().onDestroy());
-                    BlackBoxCore.getBActivityManager().onServiceDestroy(intent, BlackBoxCore.getUserId());
+                    BlackBoxCore.getBActivityManager().onServiceDestroy(intent, BActivityThread.getUserId());
                     mService.remove(new Intent.FilterComparison(intent));
                 }
             } catch (Throwable e) {
@@ -222,7 +229,7 @@ public class AppServiceDispatcher {
         if (record != null && record.getService() != null) {
             return record.getService();
         }
-        Service service = BlackBoxCore.currentActivityThread().createService(serviceInfo, token);
+        Service service = BActivityThread.currentActivityThread().createService(serviceInfo, token);
         if (service == null)
             return null;
         record = new ServiceRecord();

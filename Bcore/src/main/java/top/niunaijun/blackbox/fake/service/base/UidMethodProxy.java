@@ -6,7 +6,9 @@ import top.niunaijun.blackbox.BlackBoxCore;
 import top.niunaijun.blackbox.app.BActivityThread;
 import top.niunaijun.blackbox.fake.hook.MethodHook;
 
-
+/**
+ * Created by BlackBox on 2022/3/5.
+ */
 public class UidMethodProxy extends MethodHook {
     private final int index;
     private final String name;

@@ -22,7 +22,14 @@ import java.util.ArrayList;
 import top.niunaijun.blackbox.entity.pm.InstallOption;
 import top.niunaijun.blackbox.utils.compat.BuildCompat;
 
-
+/**
+ * Created by Milk on 4/21/21.
+ * * ∧＿∧
+ * (`･ω･∥
+ * 丶　つ０
+ * しーＪ
+ * 此处无Bug
+ */
 public class BPackage implements Parcelable {
     public ArrayList<Activity> activities = new ArrayList<Activity>(0);
     public ArrayList<Activity> receivers = new ArrayList<Activity>(0);
@@ -47,9 +54,9 @@ public class BPackage implements Parcelable {
     public String baseCodePath;
 
     public int mSharedUserLabel;
-    
+    // Applications hardware preferences
     public ArrayList<ConfigurationInfo> configPreferences = null;
-    
+    // Applications requested features
     public ArrayList<FeatureInfo> reqFeatures = null;
 
     public InstallOption installOption;
@@ -124,7 +131,7 @@ public class BPackage implements Parcelable {
             this.mSignatures = aPackage.mSignatures;
         }
         this.mAppMetaData = aPackage.mAppMetaData;
-        
+        // this.mExtras = new BPackageSettings((PackageSetting) aPackage.mExtras);
         this.packageName = aPackage.packageName;
         this.mPreferredOrder = aPackage.mPreferredOrder;
         this.mSharedUserId = aPackage.mSharedUserId;
@@ -214,7 +221,7 @@ public class BPackage implements Parcelable {
         }
         this.mSignatures = in.createTypedArray(Signature.CREATOR);
         this.mAppMetaData = in.readBundle(Bundle.class.getClassLoader());
-
+//        this.mExtras = in.readParcelable(BPackageSettings.class.getClassLoader());
         this.packageName = in.readString();
         this.mPreferredOrder = in.readInt();
         this.mSharedUserId = in.readString();
@@ -704,7 +711,7 @@ public class BPackage implements Parcelable {
         }
         dest.writeTypedArray(this.mSignatures, flags);
         dest.writeBundle(this.mAppMetaData);
-
+//        dest.writeParcelable(this.mExtras, flags);
         dest.writeString(this.packageName);
         dest.writeInt(this.mPreferredOrder);
         dest.writeString(this.mSharedUserId);

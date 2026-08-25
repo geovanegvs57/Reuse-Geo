@@ -11,7 +11,14 @@ import top.niunaijun.blackbox.fake.hook.MethodHook;
 import top.niunaijun.blackbox.fake.hook.ProxyMethod;
 
 
-
+/**
+ * Created by Milk on 4/6/21.
+ * * ∧＿∧
+ * (`･ω･∥
+ * 丶　つ０
+ * しーＪ
+ * 此处无Bug
+ */
 public class IWindowSessionProxy extends BinderInvocationStub {
     public static final String TAG = "WindowSessionStub";
 
@@ -51,11 +58,7 @@ public class IWindowSessionProxy extends BinderInvocationStub {
                     continue;
                 }
                 if (arg instanceof WindowManager.LayoutParams) {
-                    WindowManager.LayoutParams lp = (WindowManager.LayoutParams) arg;
-                    lp.packageName = BlackBoxCore.getHostPkg();
-                    if (BlackBoxCore.get().isDisableFlagSecure()) {
-                        lp.flags &= ~WindowManager.LayoutParams.FLAG_SECURE;
-                    }
+                    ((WindowManager.LayoutParams) arg).packageName = BlackBoxCore.getHostPkg();
                 }
             }
             return method.invoke(who, args);
@@ -64,24 +67,5 @@ public class IWindowSessionProxy extends BinderInvocationStub {
 
     @ProxyMethod("addToDisplayAsUser")
     public static class AddToDisplayAsUser extends AddToDisplay {
-    }
-
-    @ProxyMethod("relayout")
-    public static class Relayout extends MethodHook {
-        @Override
-        protected Object hook(Object who, Method method, Object[] args) throws Throwable {
-            for (Object arg : args) {
-                if (arg == null) {
-                    continue;
-                }
-                if (arg instanceof WindowManager.LayoutParams) {
-                    WindowManager.LayoutParams lp = (WindowManager.LayoutParams) arg;
-                    if (BlackBoxCore.get().isDisableFlagSecure()) {
-                        lp.flags &= ~WindowManager.LayoutParams.FLAG_SECURE;
-                    }
-                }
-            }
-            return method.invoke(who, args);
-        }
     }
 }

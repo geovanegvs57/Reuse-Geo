@@ -14,7 +14,9 @@ import black.android.content.BroadcastReceiverPendingResultContext;
 import black.android.content.BroadcastReceiverPendingResultMContext;
 import top.niunaijun.blackbox.utils.compat.BuildCompat;
 
-
+/**
+ * Created by BlackBox on 2022/2/28.
+ */
 public class PendingResultData implements Parcelable {
     public int mType;
     public boolean mOrderedHint;

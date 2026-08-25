@@ -8,7 +8,9 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-
+/**
+ * Created by qiaopu on 2018/4/26.
+ */
 public class Reflector {
     public static final String LOG_TAG = "Reflector";
 
@@ -122,7 +124,7 @@ public class Reflector {
                 try {
                     return cls.getDeclaredField(name);
                 } catch (NoSuchFieldException ex) {
-                    
+                    // Ignored
                 }
             }
             throw e;
@@ -178,7 +180,7 @@ public class Reflector {
                 try {
                     return cls.getDeclaredMethod(name, parameterTypes);
                 } catch (NoSuchMethodException ex) {
-                    
+                    // Ignored
                 }
             }
             throw e;
@@ -219,7 +221,7 @@ public class Reflector {
                 cls = Class.forName(name, initialize, loader);
                 return on(cls, null);
             } catch (Throwable e) {
-
+//                Log.w(LOG_TAG, "Oops!", e);
                 return on(cls, e);
             }
         }
@@ -268,7 +270,7 @@ public class Reflector {
                 super.constructor(parameterTypes);
             } catch (Throwable e) {
                 mIgnored = e;
-
+//                Log.w(LOG_TAG, "Oops!", e);
             }
             return this;
         }
@@ -283,7 +285,7 @@ public class Reflector {
                 return super.newInstance(initargs);
             } catch (Throwable e) {
                 mIgnored = e;
-
+//                Log.w(LOG_TAG, "Oops!", e);
             }
             return null;
         }
@@ -298,7 +300,7 @@ public class Reflector {
                 super.bind(obj);
             } catch (Throwable e) {
                 mIgnored = e;
-
+//                Log.w(LOG_TAG, "Oops!", e);
             }
             return this;
         }
@@ -319,7 +321,7 @@ public class Reflector {
                 super.field(name);
             } catch (Throwable e) {
                 mIgnored = e;
-
+//                Log.w(LOG_TAG, "Oops!", e);
             }
             return this;
         }
@@ -334,7 +336,7 @@ public class Reflector {
                 return super.get();
             } catch (Throwable e) {
                 mIgnored = e;
-
+//                Log.w(LOG_TAG, "Oops!", e);
             }
             return null;
         }
@@ -349,7 +351,7 @@ public class Reflector {
                 return super.get(caller);
             } catch (Throwable e) {
                 mIgnored = e;
-
+//                Log.w(LOG_TAG, "Oops!", e);
             }
             return null;
         }
@@ -364,7 +366,7 @@ public class Reflector {
                 super.set(value);
             } catch (Throwable e) {
                 mIgnored = e;
-
+//                Log.w(LOG_TAG, "Oops!", e);
             }
             return this;
         }
@@ -379,7 +381,7 @@ public class Reflector {
                 super.set(caller, value);
             } catch (Throwable e) {
                 mIgnored = e;
-
+//                Log.w(LOG_TAG, "Oops!", e);
             }
             return this;
         }
@@ -394,7 +396,7 @@ public class Reflector {
                 super.method(name, parameterTypes);
             } catch (Throwable e) {
                 mIgnored = e;
-
+//                Log.w(LOG_TAG, "Oops!", e);
             }
             return this;
         }
@@ -409,7 +411,7 @@ public class Reflector {
                 return super.call(args);
             } catch (Throwable e) {
                 mIgnored = e;
-
+//                Log.w(LOG_TAG, "Oops!", e);
             }
             return null;
         }
@@ -424,7 +426,7 @@ public class Reflector {
                 return super.callByCaller(caller, args);
             } catch (Throwable e) {
                 mIgnored = e;
-
+//                Log.w(LOG_TAG, "Oops!", e);
             }
             return null;
         }

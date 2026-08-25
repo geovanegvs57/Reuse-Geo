@@ -7,7 +7,6 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
-import top.niunaijun.blackbox.BlackBoxCore;
 import top.niunaijun.blackbox.app.BActivityThread;
 import top.niunaijun.blackbox.fake.hook.HookManager;
 import top.niunaijun.blackbox.fake.service.HCallbackProxy;
@@ -15,11 +14,17 @@ import top.niunaijun.blackbox.proxy.record.ProxyActivityRecord;
 import top.niunaijun.blackbox.proxy.record.ProxyPendingRecord;
 import top.niunaijun.blackbox.utils.Slog;
 
-
+/**
+ * Created by Milk on 3/28/21.
+ * * ∧＿∧
+ * (`･ω･∥
+ * 丶　つ０
+ * しーＪ
+ * 此处无Bug
+ */
 public class ProxyActivity extends Activity {
     public static final String TAG = "ProxyActivity";
 
-    
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -27,11 +32,11 @@ public class ProxyActivity extends Activity {
         finish();
 
         HookManager.get().checkEnv(HCallbackProxy.class);
-
+//        HookManager.get().checkEnv(AppInstrumentation.class);
 
         ProxyActivityRecord record = ProxyActivityRecord.create(getIntent());
         if (record.mTarget != null) {
-            record.mTarget.setExtrasClassLoader(BlackBoxCore.getApplication().getClassLoader());
+            record.mTarget.setExtrasClassLoader(BActivityThread.getApplication().getClassLoader());
             startActivity(record.mTarget);
             return;
         }

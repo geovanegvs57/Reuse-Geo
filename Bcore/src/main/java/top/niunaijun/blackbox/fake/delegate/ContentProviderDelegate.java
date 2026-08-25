@@ -21,10 +21,17 @@ import black.android.providers.BRSettingsSecure;
 import black.android.providers.BRSettingsSystem;
 import top.niunaijun.blackbox.BlackBoxCore;
 import top.niunaijun.blackbox.fake.service.context.providers.ContentProviderStub;
-import top.niunaijun.blackbox.fake.service.context.providers.SystemProviderStub;
+import top.niunaijun.blackbox.fake.service.context.providers.SettingsProviderStub;
 import top.niunaijun.blackbox.utils.compat.BuildCompat;
 
-
+/**
+ * Created by Milk on 3/31/21.
+ * * ∧＿∧
+ * (`･ω･∥
+ * 丶　つ０
+ * しーＪ
+ * 此处无Bug
+ */
 public class ContentProviderDelegate {
     public static final String TAG = "ContentProviderDelegate";
     private static Set<String> sInjected = new HashSet<>();
@@ -41,10 +48,8 @@ public class ContentProviderDelegate {
             return;
         IInterface bContentProvider;
         switch (auth) {
-            case "media":
-            case "telephony":
             case "settings":
-                bContentProvider = new SystemProviderStub().wrapper(iInterface, BlackBoxCore.getHostPkg());
+                bContentProvider = new SettingsProviderStub().wrapper(iInterface, BlackBoxCore.getHostPkg());
                 break;
             default:
                 bContentProvider = new ContentProviderStub().wrapper(iInterface, BlackBoxCore.getHostPkg());
