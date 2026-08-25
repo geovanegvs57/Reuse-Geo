@@ -76,92 +76,103 @@ class AppInstaller(private val context: Context) {
             Log.d(TAG, "🔥 resetTrial chamado para $packageName (userId=$userId)")
 
             // ============================================================
-            // ===== DELETAR TODAS AS PASTAS DO CLONE =====
+            // ===== 1. TENTAR REINSTALAR O APK COM NOVA ASSINATURA =====
             // ============================================================
-            val baseDir = context.filesDir
-            val cacheDir = context.cacheDir
-            val externalFilesDir = context.getExternalFilesDir(null)
-            val externalCacheDir = context.externalCacheDir
-
-            Log.d(TAG, "📂 BaseDir: ${baseDir.absolutePath}")
-
-            // Lista de caminhos possíveis para dados do clone
-            val caminhos = mutableListOf(
-                File(baseDir, "users/$userId/apps/$packageName"),
-                File(baseDir, "virtual/$userId/$packageName"),
-                File(baseDir, "apps/$packageName"),
-                File(baseDir, "data/$userId/$packageName"),
-                File(cacheDir, "users/$userId/$packageName"),
-                File(cacheDir, "virtual/$userId/$packageName"),
-                // Caminhos extras
-                File(baseDir, "users/$userId"),
-                File(baseDir, "virtual/$userId")
-            )
-
-            externalFilesDir?.let {
-                caminhos.add(File(it, "users/$userId/apps/$packageName"))
-                caminhos.add(File(it, "virtual/$userId/$packageName"))
-                caminhos.add(File(it, "apps/$packageName"))
-            }
-            externalCacheDir?.let {
-                caminhos.add(File(it, "users/$userId/apps/$packageName"))
-                caminhos.add(File(it, "virtual/$userId/$packageName"))
-            }
-
-            var encontrou = false
-            for (caminho in caminhos) {
-                if (caminho.exists()) {
-                    Log.d(TAG, "✅ Encontrado: ${caminho.absolutePath}")
-                    deleteRecursive(caminho)
-                    encontrou = true
-                } else {
-                    Log.d(TAG, "❌ Não encontrado: ${caminho.absolutePath}")
-                }
-            }
-
-            // Busca recursiva por pastas com o nome do pacote
-            val dirsToSearch = listOfNotNull(baseDir, cacheDir, externalFilesDir, externalCacheDir)
-            for (dir in dirsToSearch) {
-                val encontrouSub = deleteAllMatching(dir, packageName)
-                if (encontrouSub) encontrou = true
-            }
-
-            // ============================================================
-            // ===== LIMPAR SHARED PREFERENCES =====
-            // ============================================================
-            val prefNames = listOf(
-                "trial", "demo", "premium", "vip", "subscription", 
-                "license", "activation", "user_data", "prefs", "settings",
-                packageName, "${packageName}_prefs"
-            )
-            for (prefName in prefNames) {
-                try {
-                    val sp = context.getSharedPreferences(prefName, Context.MODE_PRIVATE)
-                    sp.edit().clear().apply()
-                    Log.d(TAG, "✅ SP limpa: $prefName")
-                } catch (_: Exception) {}
-            }
-
-            // ============================================================
-            // ===== TENTAR RECRIAR O USUÁRIO (se disponível) =====
-            // ============================================================
+            var reinstalou = false
             try {
-                val userManager = BlackBoxCore.get().getUserManager()
-                if (userManager != null) {
-                    userManager.removeUser(userId)
-                    userManager.createUser(userId)
-                    Log.d(TAG, "✅ Usuário $userId recriado")
+                // Obtém o caminho do APK original
+                val packageManager = context.packageManager
+                val packageInfo = packageManager.getPackageInfo(packageName, 0)
+                val apkPath = packageInfo.applicationInfo.sourceDir
+                
+                // Desinstala o clone atual
+                try {
+                    BlackBoxCore.get().uninstallPackage(packageName)
+                    Log.d(TAG, "🗑️ Clone desinstalado: $packageName")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ Erro ao desinstalar: ${e.message}")
                 }
+                
+                // Reinstala o APK (o BlackBox vai gerar uma nova assinatura)
+                BlackBoxCore.get().installPackage(apkPath)
+                Log.d(TAG, "✅ Clone reinstalado com nova assinatura: $packageName")
+                Toast.makeText(context, "✅ Clone reinstalado com nova assinatura!", Toast.LENGTH_LONG).show()
+                reinstalou = true
+                
             } catch (e: Exception) {
-                Log.w(TAG, "⚠️ getUserManager não disponível: ${e.message}")
+                Log.w(TAG, "⚠️ Reinstalação não disponível: ${e.message}")
+                Toast.makeText(context, "⚠️ Reinstalação não disponível, tentando reset manual...", Toast.LENGTH_SHORT).show()
             }
 
-            if (encontrou) {
-                Log.d(TAG, "🔥 RESET COMPLETO PARA $packageName (userId=$userId)")
-                Toast.makeText(context, "✅ Reset executado para $packageName", Toast.LENGTH_SHORT).show()
-            } else {
-                Log.w(TAG, "⚠️ NENHUMA PASTA DE DADOS ENCONTRADA PARA $packageName")
-                Toast.makeText(context, "⚠️ Reset: dados não encontrados", Toast.LENGTH_SHORT).show()
+            // ============================================================
+            // ===== 2. SE NÃO CONSEGUIU REINSTALAR, FAZ RESET MANUAL =====
+            // ============================================================
+            if (!reinstalou) {
+                Log.d(TAG, "📂 Reset manual (deletar pastas)")
+                
+                val baseDir = context.filesDir
+                val cacheDir = context.cacheDir
+                val externalFilesDir = context.getExternalFilesDir(null)
+                val externalCacheDir = context.externalCacheDir
+
+                Log.d(TAG, "📂 BaseDir: ${baseDir.absolutePath}")
+
+                val caminhos = mutableListOf(
+                    File(baseDir, "users/$userId/apps/$packageName"),
+                    File(baseDir, "virtual/$userId/$packageName"),
+                    File(baseDir, "apps/$packageName"),
+                    File(baseDir, "data/$userId/$packageName"),
+                    File(cacheDir, "users/$userId/$packageName"),
+                    File(cacheDir, "virtual/$userId/$packageName"),
+                    File(baseDir, "users/$userId"),
+                    File(baseDir, "virtual/$userId")
+                )
+
+                externalFilesDir?.let {
+                    caminhos.add(File(it, "users/$userId/apps/$packageName"))
+                    caminhos.add(File(it, "virtual/$userId/$packageName"))
+                    caminhos.add(File(it, "apps/$packageName"))
+                }
+                externalCacheDir?.let {
+                    caminhos.add(File(it, "users/$userId/apps/$packageName"))
+                    caminhos.add(File(it, "virtual/$userId/$packageName"))
+                }
+
+                var encontrou = false
+                for (caminho in caminhos) {
+                    if (caminho.exists()) {
+                        Log.d(TAG, "✅ Encontrado: ${caminho.absolutePath}")
+                        deleteRecursive(caminho)
+                        encontrou = true
+                    }
+                }
+
+                val dirsToSearch = listOfNotNull(baseDir, cacheDir, externalFilesDir, externalCacheDir)
+                for (dir in dirsToSearch) {
+                    val encontrouSub = deleteAllMatching(dir, packageName)
+                    if (encontrouSub) encontrou = true
+                }
+
+                val prefNames = listOf(
+                    "trial", "demo", "premium", "vip", "subscription", 
+                    "license", "activation", "user_data", "prefs", "settings",
+                    packageName, "${packageName}_prefs"
+                )
+                for (prefName in prefNames) {
+                    try {
+                        val sp = context.getSharedPreferences(prefName, Context.MODE_PRIVATE)
+                        sp.edit().clear().apply()
+                        Log.d(TAG, "✅ SP limpa: $prefName")
+                    } catch (_: Exception) {}
+                }
+
+                if (encontrou) {
+                    Log.d(TAG, "🔥 RESET MANUAL COMPLETO PARA $packageName (userId=$userId)")
+                    Toast.makeText(context, "✅ Reset manual executado para $packageName", Toast.LENGTH_SHORT).show()
+                } else {
+                    Log.w(TAG, "⚠️ NENHUMA PASTA DE DADOS ENCONTRADA PARA $packageName")
+                    Toast.makeText(context, "⚠️ Reset: dados não encontrados", Toast.LENGTH_SHORT).show()
+                }
             }
 
         } catch (e: Exception) {
@@ -170,9 +181,6 @@ class AppInstaller(private val context: Context) {
         }
     }
 
-    /**
-     * Deleta recursivamente todas as pastas que contêm o nome do pacote
-     */
     private fun deleteAllMatching(rootDir: File, packageName: String): Boolean {
         var deletou = false
         try {
