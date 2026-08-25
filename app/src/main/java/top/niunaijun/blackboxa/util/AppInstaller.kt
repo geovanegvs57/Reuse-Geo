@@ -80,38 +80,51 @@ class AppInstaller(private val context: Context) {
             Log.d(TAG, "🔥 resetTrial chamado para $packageName (userId=$userId)")
 
             // ============================================================
-            // ===== 1. TENTAR DESINSTALAR E REINSTALAR O CLONE =====
+            // ===== 1. TENTAR CRIAR UM NOVO CLONE COM userId DIFERENTE =====
             // ============================================================
-            var reinstalou = false
+            var resetFeito = false
+            
+            // Tenta desinstalar o clone atual
             try {
-                // Tenta desinstalar o clone
                 BlackBoxCore.get().uninstallPackage(packageName, userId)
-                Log.d(TAG, "🗑️ Clone desinstalado: $packageName")
-                Toast.makeText(context, "🗑️ Clone removido, reinstalando...", Toast.LENGTH_SHORT).show()
-                
-                // Pequeno delay para garantir que a desinstalação foi concluída
-                Thread.sleep(500)
+                Log.d(TAG, "🗑️ Clone antigo desinstalado: $packageName (userId=$userId)")
+                resetFeito = true
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Erro ao desinstalar clone antigo: ${e.message}")
+            }
 
-                // Obtém o caminho do APK original instalado no sistema
+            // Cria um NOVO userId (userId + 1)
+            val novoUserId = userId + 1
+            try {
+                // Tenta criar o novo usuário
+                val userManager = BlackBoxCore.get().getUserManager()
+                if (userManager != null) {
+                    userManager.createUser(novoUserId)
+                    Log.d(TAG, "✅ Novo usuário criado: $novoUserId")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Erro ao criar novo usuário: ${e.message}")
+            }
+
+            // Tenta instalar o app no NOVO userId
+            try {
                 val packageManager = context.packageManager
                 val packageInfo = packageManager.getPackageInfo(packageName, 0)
                 val apkPath = packageInfo.applicationInfo.sourceDir
                 
-                Log.d(TAG, "📦 Reinstalando clone a partir de: $apkPath")
-                BlackBoxCore.get().installPackage(apkPath, userId)
-                Log.d(TAG, "✅ Clone reinstalado com sucesso: $packageName")
-                Toast.makeText(context, "✅ Clone reinstalado! Abra o app.", Toast.LENGTH_LONG).show()
-                reinstalou = true
-                
+                Log.d(TAG, "📦 Instalando clone no NOVO usuário ($novoUserId)")
+                BlackBoxCore.get().installPackage(apkPath, novoUserId)
+                Log.d(TAG, "✅ Clone instalado no NOVO usuário: $packageName (userId=$novoUserId)")
+                Toast.makeText(context, "✅ NOVO clone criado com novos IDs (userId=$novoUserId)!", Toast.LENGTH_LONG).show()
+                resetFeito = true
             } catch (e: Exception) {
-                Log.w(TAG, "⚠️ Não foi possível reinstalar (método pode não existir): ${e.message}")
-                Toast.makeText(context, "⚠️ Reinstalação não disponível, tentando reset manual...", Toast.LENGTH_SHORT).show()
+                Log.w(TAG, "⚠️ Não foi possível instalar no novo usuário: ${e.message}")
             }
 
             // ============================================================
-            // ===== 2. SE NÃO CONSEGUIU REINSTALAR, FAZ RESET MANUAL =====
+            // ===== 2. SE NÃO CONSEGUIU, FAZ RESET MANUAL =====
             // ============================================================
-            if (!reinstalou) {
+            if (!resetFeito) {
                 Log.d(TAG, "📂 Reset manual (deletar pastas)")
                 
                 val baseDir = context.filesDir
@@ -121,7 +134,6 @@ class AppInstaller(private val context: Context) {
 
                 Log.d(TAG, "📂 BaseDir: ${baseDir.absolutePath}")
 
-                // Lista de caminhos possíveis para dados do clone
                 val caminhos = mutableListOf(
                     File(baseDir, "users/$userId/apps/$packageName"),
                     File(baseDir, "virtual/$userId/$packageName"),
@@ -152,14 +164,12 @@ class AppInstaller(private val context: Context) {
                     }
                 }
 
-                // Busca recursiva por pastas com o nome do pacote
                 val dirsToSearch = listOfNotNull(baseDir, cacheDir, externalFilesDir, externalCacheDir)
                 for (dir in dirsToSearch) {
                     val encontrouSub = deleteAllMatching(dir, packageName)
                     if (encontrouSub) encontrou = true
                 }
 
-                // Limpar SharedPreferences
                 val prefNames = listOf(
                     "trial", "demo", "premium", "vip", "subscription", 
                     "license", "activation", "user_data", "prefs", "settings"
@@ -181,7 +191,7 @@ class AppInstaller(private val context: Context) {
                 }
             }
 
-            Log.d(TAG, "🔥 RESET TRIAL FINALIZADO PARA $packageName (userId=$userId)")
+            Log.d(TAG, "🔥 RESET TRIAL FINALIZADO PARA $packageName")
 
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erro no reset: ${e.message}")
@@ -202,13 +212,11 @@ class AppInstaller(private val context: Context) {
 
             for (file in files) {
                 if (file.isDirectory) {
-                    // Se a pasta contém o nome do pacote, deleta ela inteira
                     if (file.name.contains(packageName) || file.absolutePath.contains(packageName)) {
                         Log.d(TAG, "🗑️ Deletando pasta: ${file.absolutePath}")
                         deleteRecursive(file)
                         deletou = true
                     } else {
-                        // Senão, verifica subpastas
                         val subDeletou = deleteAllMatching(file, packageName)
                         if (subDeletou) deletou = true
                     }
