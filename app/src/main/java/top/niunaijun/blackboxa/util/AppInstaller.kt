@@ -80,118 +80,73 @@ class AppInstaller(private val context: Context) {
             Log.d(TAG, "🔥 resetTrial chamado para $packageName (userId=$userId)")
 
             // ============================================================
-            // ===== 1. TENTAR CRIAR UM NOVO CLONE COM userId DIFERENTE =====
+            // ===== RESET MANUAL (DELETAR PASTAS + LIMPAR SP) =====
             // ============================================================
-            var resetFeito = false
-            
-            // Tenta desinstalar o clone atual
-            try {
-                BlackBoxCore.get().uninstallPackage(packageName, userId)
-                Log.d(TAG, "🗑️ Clone antigo desinstalado: $packageName (userId=$userId)")
-                resetFeito = true
-            } catch (e: Exception) {
-                Log.w(TAG, "⚠️ Erro ao desinstalar clone antigo: ${e.message}")
+            val baseDir = context.filesDir
+            val cacheDir = context.cacheDir
+            val externalFilesDir = context.getExternalFilesDir(null)
+            val externalCacheDir = context.externalCacheDir
+
+            Log.d(TAG, "📂 BaseDir: ${baseDir.absolutePath}")
+
+            // Lista de caminhos possíveis para dados do clone
+            val caminhos = mutableListOf(
+                File(baseDir, "users/$userId/apps/$packageName"),
+                File(baseDir, "virtual/$userId/$packageName"),
+                File(baseDir, "apps/$packageName"),
+                File(baseDir, "data/$userId/$packageName"),
+                File(cacheDir, "users/$userId/$packageName"),
+                File(cacheDir, "virtual/$userId/$packageName")
+            )
+
+            externalFilesDir?.let {
+                caminhos.add(File(it, "users/$userId/apps/$packageName"))
+                caminhos.add(File(it, "virtual/$userId/$packageName"))
+                caminhos.add(File(it, "apps/$packageName"))
+            }
+            externalCacheDir?.let {
+                caminhos.add(File(it, "users/$userId/apps/$packageName"))
+                caminhos.add(File(it, "virtual/$userId/$packageName"))
             }
 
-            // Cria um NOVO userId (userId + 1)
-            val novoUserId = userId + 1
-            try {
-                // Tenta criar o novo usuário
-                val userManager = BlackBoxCore.get().getUserManager()
-                if (userManager != null) {
-                    userManager.createUser(novoUserId)
-                    Log.d(TAG, "✅ Novo usuário criado: $novoUserId")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "⚠️ Erro ao criar novo usuário: ${e.message}")
-            }
-
-            // Tenta instalar o app no NOVO userId
-            try {
-                val packageManager = context.packageManager
-                val packageInfo = packageManager.getPackageInfo(packageName, 0)
-                val apkPath = packageInfo.applicationInfo.sourceDir
-                
-                Log.d(TAG, "📦 Instalando clone no NOVO usuário ($novoUserId)")
-                BlackBoxCore.get().installPackage(apkPath, novoUserId)
-                Log.d(TAG, "✅ Clone instalado no NOVO usuário: $packageName (userId=$novoUserId)")
-                Toast.makeText(context, "✅ NOVO clone criado com novos IDs (userId=$novoUserId)!", Toast.LENGTH_LONG).show()
-                resetFeito = true
-            } catch (e: Exception) {
-                Log.w(TAG, "⚠️ Não foi possível instalar no novo usuário: ${e.message}")
-            }
-
-            // ============================================================
-            // ===== 2. SE NÃO CONSEGUIU, FAZ RESET MANUAL =====
-            // ============================================================
-            if (!resetFeito) {
-                Log.d(TAG, "📂 Reset manual (deletar pastas)")
-                
-                val baseDir = context.filesDir
-                val cacheDir = context.cacheDir
-                val externalFilesDir = context.getExternalFilesDir(null)
-                val externalCacheDir = context.externalCacheDir
-
-                Log.d(TAG, "📂 BaseDir: ${baseDir.absolutePath}")
-
-                val caminhos = mutableListOf(
-                    File(baseDir, "users/$userId/apps/$packageName"),
-                    File(baseDir, "virtual/$userId/$packageName"),
-                    File(baseDir, "apps/$packageName"),
-                    File(baseDir, "data/$userId/$packageName"),
-                    File(cacheDir, "users/$userId/$packageName"),
-                    File(cacheDir, "virtual/$userId/$packageName")
-                )
-
-                externalFilesDir?.let {
-                    caminhos.add(File(it, "users/$userId/apps/$packageName"))
-                    caminhos.add(File(it, "virtual/$userId/$packageName"))
-                    caminhos.add(File(it, "apps/$packageName"))
-                }
-                externalCacheDir?.let {
-                    caminhos.add(File(it, "users/$userId/apps/$packageName"))
-                    caminhos.add(File(it, "virtual/$userId/$packageName"))
-                }
-
-                var encontrou = false
-                for (caminho in caminhos) {
-                    if (caminho.exists()) {
-                        Log.d(TAG, "✅ Encontrado: ${caminho.absolutePath}")
-                        deleteRecursive(caminho)
-                        encontrou = true
-                    } else {
-                        Log.d(TAG, "❌ Não encontrado: ${caminho.absolutePath}")
-                    }
-                }
-
-                val dirsToSearch = listOfNotNull(baseDir, cacheDir, externalFilesDir, externalCacheDir)
-                for (dir in dirsToSearch) {
-                    val encontrouSub = deleteAllMatching(dir, packageName)
-                    if (encontrouSub) encontrou = true
-                }
-
-                val prefNames = listOf(
-                    "trial", "demo", "premium", "vip", "subscription", 
-                    "license", "activation", "user_data", "prefs", "settings"
-                )
-                for (prefName in prefNames) {
-                    try {
-                        val sp = context.getSharedPreferences(prefName, Context.MODE_PRIVATE)
-                        sp.edit().clear().apply()
-                        Log.d(TAG, "✅ SP limpa: $prefName")
-                    } catch (_: Exception) {}
-                }
-
-                if (encontrou) {
-                    Log.d(TAG, "🔥 RESET MANUAL COMPLETO PARA $packageName (userId=$userId)")
-                    Toast.makeText(context, "✅ Reset manual executado para $packageName", Toast.LENGTH_SHORT).show()
+            var encontrou = false
+            for (caminho in caminhos) {
+                if (caminho.exists()) {
+                    Log.d(TAG, "✅ Encontrado: ${caminho.absolutePath}")
+                    deleteRecursive(caminho)
+                    encontrou = true
                 } else {
-                    Log.w(TAG, "⚠️ NENHUMA PASTA DE DADOS ENCONTRADA PARA $packageName")
-                    Toast.makeText(context, "⚠️ Reset: dados não encontrados", Toast.LENGTH_SHORT).show()
+                    Log.d(TAG, "❌ Não encontrado: ${caminho.absolutePath}")
                 }
             }
 
-            Log.d(TAG, "🔥 RESET TRIAL FINALIZADO PARA $packageName")
+            // Busca recursiva por pastas com o nome do pacote
+            val dirsToSearch = listOfNotNull(baseDir, cacheDir, externalFilesDir, externalCacheDir)
+            for (dir in dirsToSearch) {
+                val encontrouSub = deleteAllMatching(dir, packageName)
+                if (encontrouSub) encontrou = true
+            }
+
+            // Limpar SharedPreferences
+            val prefNames = listOf(
+                "trial", "demo", "premium", "vip", "subscription", 
+                "license", "activation", "user_data", "prefs", "settings"
+            )
+            for (prefName in prefNames) {
+                try {
+                    val sp = context.getSharedPreferences(prefName, Context.MODE_PRIVATE)
+                    sp.edit().clear().apply()
+                    Log.d(TAG, "✅ SP limpa: $prefName")
+                } catch (_: Exception) {}
+            }
+
+            if (encontrou) {
+                Log.d(TAG, "🔥 RESET MANUAL COMPLETO PARA $packageName (userId=$userId)")
+                Toast.makeText(context, "✅ Reset executado para $packageName", Toast.LENGTH_SHORT).show()
+            } else {
+                Log.w(TAG, "⚠️ NENHUMA PASTA DE DADOS ENCONTRADA PARA $packageName")
+                Toast.makeText(context, "⚠️ Reset: dados não encontrados", Toast.LENGTH_SHORT).show()
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "❌ Erro no reset: ${e.message}")
