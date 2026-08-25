@@ -5,7 +5,12 @@ import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import top.niunaijun.blackboxa.view.apps.AppsFragment
 
-
+/**
+ *
+ * @Description:
+ * @Author: wukaicheng
+ * @CreateDate: 2021/4/29 22:00
+ */
 
 class ViewPagerAdapter(appCompatActivity: AppCompatActivity) : FragmentStateAdapter(appCompatActivity) {
 

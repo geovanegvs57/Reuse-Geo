@@ -6,7 +6,12 @@ import top.niunaijun.blackboxa.bean.GmsInstallBean
 import top.niunaijun.blackboxa.data.GmsRepository
 import top.niunaijun.blackboxa.view.base.BaseViewModel
 
-
+/**
+ *
+ * @Description: gms viewModel
+ * @Author: BlackBox
+ * @CreateDate: 2022/3/2 21:11
+ */
 class GmsViewModel(private val mRepo: GmsRepository) : BaseViewModel() {
 
     val mInstalledLiveData = MutableLiveData<List<GmsBean>>()

@@ -4,7 +4,12 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 
-
+/**
+ *
+ * @Description:
+ * @Author: kotlinMiku
+ * @CreateDate: 2022/3/19 20:08
+ */
 interface BaseActivityLifecycleCallback : Application.ActivityLifecycleCallbacks {
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
@@ -22,7 +27,7 @@ interface BaseActivityLifecycleCallback : Application.ActivityLifecycleCallbacks
     override fun onActivityStopped(activity: Activity) {
 
     }
-    override fun onActivitySaveInstanceState(activity: Activity, p1: Bundle) {
+    override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle?) {
 
     }
     override fun onActivityDestroyed(activity: Activity) {

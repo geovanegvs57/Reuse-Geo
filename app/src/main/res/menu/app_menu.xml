@@ -6,10 +6,5 @@
     <item android:id="@+id/app_stop" android:title="@string/app_stop"/>
 
     <item android:id="@+id/app_remove" android:title="@string/app_remove"/>
-    
     <item android:id="@+id/app_shortcut" android:title="@string/app_shortcut"/>
-    
-    <!-- NOVO ITEM: Resetar Trial manualmente -->
-    <item android:id="@+id/app_reset_trial" android:title="Resetar Trial"/>
-
 </menu>

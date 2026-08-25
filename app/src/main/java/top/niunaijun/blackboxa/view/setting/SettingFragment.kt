@@ -1,22 +1,56 @@
 package top.niunaijun.blackboxa.view.setting
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreferenceCompat
 import top.niunaijun.blackbox.BlackBoxCore
 import top.niunaijun.blackboxa.R
 import top.niunaijun.blackboxa.app.AppManager
 import top.niunaijun.blackboxa.util.toast
 import top.niunaijun.blackboxa.view.gms.GmsManagerActivity
+import top.niunaijun.blackboxa.view.xp.XpActivity
 
+/**
+ *
+ * @Description:
+ * @Author: wukaicheng
+ * @CreateDate: 2021/5/6 22:13
+ */
 class SettingFragment : PreferenceFragmentCompat() {
+
+    private lateinit var xpEnable: SwitchPreferenceCompat
+
+    private lateinit var xpModule: Preference
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.setting, rootKey)
 
+        xpEnable = findPreference("xp_enable")!!
+        xpEnable.isChecked = BlackBoxCore.get().isXPEnable
+
+        xpEnable.setOnPreferenceChangeListener { _, newValue ->
+            BlackBoxCore.get().isXPEnable = (newValue == true)
+            true
+        }
+        //xp模块跳转
+        xpModule = findPreference("xp_module")!!
+        xpModule.setOnPreferenceClickListener {
+            val intent = Intent(requireActivity(), XpActivity::class.java)
+            requireContext().startActivity(intent)
+            true
+        }
         initGms()
 
-        invalidHideState {
+        invalidHideState{
+            val xpHidePreference: Preference = (findPreference("xp_hide")!!)
+            val hideXposed = AppManager.mBlackBoxLoader.hideXposed()
+            xpHidePreference.setDefaultValue(hideXposed)
+            xpHidePreference
+        }
+
+        invalidHideState{
             val rootHidePreference: Preference = (findPreference("root_hide")!!)
             val hideRoot = AppManager.mBlackBoxLoader.hideRoot()
             rootHidePreference.setDefaultValue(hideRoot)
@@ -29,22 +63,6 @@ class SettingFragment : PreferenceFragmentCompat() {
             daemonPreference.setDefaultValue(mDaemonEnable)
             daemonPreference
         }
-
-        invalidHideState {
-            val vpnPreference: Preference = (findPreference("use_vpn_network")!!)
-            val mUseVpnNetwork = AppManager.mBlackBoxLoader.useVpnNetwork()
-            vpnPreference.setDefaultValue(mUseVpnNetwork)
-            vpnPreference
-        }
-
-        invalidHideState {
-            val disableFlagSecurePreference: Preference = (findPreference("disable_flag_secure")!!)
-            val mDisableFlagSecure = AppManager.mBlackBoxLoader.disableFlagSecure()
-            disableFlagSecurePreference.setDefaultValue(mDisableFlagSecure)
-            disableFlagSecurePreference
-        }
-
-        initSendLogs()
     }
 
     private fun initGms() {
@@ -67,45 +85,22 @@ class SettingFragment : PreferenceFragmentCompat() {
         pref.setOnPreferenceChangeListener { preference, newValue ->
             val tmpHide = (newValue == true)
             when (preference.key) {
+                "xp_hide" -> {
+                    AppManager.mBlackBoxLoader.invalidHideXposed(tmpHide)
+                }
+
                 "root_hide" -> {
 
                     AppManager.mBlackBoxLoader.invalidHideRoot(tmpHide)
                 }
+
                 "daemon_enable" -> {
                     AppManager.mBlackBoxLoader.invalidDaemonEnable(tmpHide)
-                }
-                "use_vpn_network" -> {
-                    AppManager.mBlackBoxLoader.invalidUseVpnNetwork(tmpHide)
-                }
-                "disable_flag_secure" -> {
-                    AppManager.mBlackBoxLoader.invalidDisableFlagSecure(tmpHide)
                 }
             }
 
             toast(R.string.restart_module)
             return@setOnPreferenceChangeListener true
-        }
-    }
-    private fun initSendLogs() {
-        val sendLogsPreference: Preference? = findPreference("send_logs")
-        sendLogsPreference?.setOnPreferenceClickListener {
-            it.isEnabled = false
-            BlackBoxCore.get()
-                    .sendLogs(
-                            "Manual Log Upload from Settings",
-                            true,
-                            object : BlackBoxCore.LogSendListener {
-                                override fun onSuccess() {
-                                    activity?.runOnUiThread { sendLogsPreference.isEnabled = true }
-                                }
-
-                                override fun onFailure(error: String?) {
-                                    activity?.runOnUiThread { sendLogsPreference.isEnabled = true }
-                                }
-                            }
-                    )
-            toast("Sending logs... (Check notifications for status)")
-            true
         }
     }
 }
