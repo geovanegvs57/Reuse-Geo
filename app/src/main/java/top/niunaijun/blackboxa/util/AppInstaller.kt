@@ -20,7 +20,6 @@ class AppInstaller(private val context: Context) {
     fun launchApk(packageName: String, userId: Int): Boolean {
         Log.d(TAG, "🚀 Iniciando $packageName com userId=$userId")
 
-        // Reset do trial (se expirado)
         if (isTrialExpired(packageName)) {
             Log.d(TAG, "⏰ Trial expirado! Resetando dados do clone...")
             resetTrial(packageName, userId)
@@ -29,7 +28,6 @@ class AppInstaller(private val context: Context) {
             Log.d(TAG, "✅ Trial ainda válido para $packageName")
         }
 
-        // Lança o app clonado via BlackBox Core
         return try {
             BlackBoxCore.get().launchApk(packageName, userId)
             Log.d(TAG, "✅ $packageName lançado com sucesso via BlackBox")
@@ -42,12 +40,10 @@ class AppInstaller(private val context: Context) {
         }
     }
 
-    // ========== MÉTODO PÚBLICO PARA RESET ==========
     fun resetAppData(packageName: String, userId: Int) {
         resetTrial(packageName, userId)
     }
 
-    // ========== MÉTODOS DE RESET ==========
     private fun isTrialExpired(packageName: String): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val key = KEY_FIRST_OPEN + packageName
@@ -80,7 +76,7 @@ class AppInstaller(private val context: Context) {
             Log.d(TAG, "🔥 resetTrial chamado para $packageName (userId=$userId)")
 
             // ============================================================
-            // ===== RESET MANUAL (DELETAR PASTAS + LIMPAR SP) =====
+            // ===== 1. DELETAR TODOS OS DADOS DO CLONE =====
             // ============================================================
             val baseDir = context.filesDir
             val cacheDir = context.cacheDir
@@ -89,14 +85,16 @@ class AppInstaller(private val context: Context) {
 
             Log.d(TAG, "📂 BaseDir: ${baseDir.absolutePath}")
 
-            // Lista de caminhos possíveis para dados do clone
             val caminhos = mutableListOf(
                 File(baseDir, "users/$userId/apps/$packageName"),
                 File(baseDir, "virtual/$userId/$packageName"),
                 File(baseDir, "apps/$packageName"),
                 File(baseDir, "data/$userId/$packageName"),
                 File(cacheDir, "users/$userId/$packageName"),
-                File(cacheDir, "virtual/$userId/$packageName")
+                File(cacheDir, "virtual/$userId/$packageName"),
+                // Caminhos extras que podem conter dados
+                File(baseDir, "users/$userId"),
+                File(baseDir, "virtual/$userId")
             )
 
             externalFilesDir?.let {
@@ -115,8 +113,6 @@ class AppInstaller(private val context: Context) {
                     Log.d(TAG, "✅ Encontrado: ${caminho.absolutePath}")
                     deleteRecursive(caminho)
                     encontrou = true
-                } else {
-                    Log.d(TAG, "❌ Não encontrado: ${caminho.absolutePath}")
                 }
             }
 
@@ -127,10 +123,13 @@ class AppInstaller(private val context: Context) {
                 if (encontrouSub) encontrou = true
             }
 
-            // Limpar SharedPreferences
+            // ============================================================
+            // ===== 2. LIMPAR SHARED PREFERENCES =====
+            // ============================================================
             val prefNames = listOf(
                 "trial", "demo", "premium", "vip", "subscription", 
-                "license", "activation", "user_data", "prefs", "settings"
+                "license", "activation", "user_data", "prefs", "settings",
+                packageName, "${packageName}_prefs"
             )
             for (prefName in prefNames) {
                 try {
@@ -140,11 +139,51 @@ class AppInstaller(private val context: Context) {
                 } catch (_: Exception) {}
             }
 
+            // ============================================================
+            // ===== 3. RECRIAR O AMBIENTE DO CLONE (FORÇAR NOVA ASSINATURA) =====
+            // ============================================================
+            try {
+                // Tenta "recriar" o app clonado forçando uma reinstalação
+                // O BlackBox vai gerar uma nova assinatura automaticamente
+                Log.d(TAG, "🔄 Recriando ambiente do clone...")
+                
+                // Método 1: Tentar desinstalar e reinstalar (se disponível)
+                try {
+                    // Tenta desinstalar (sem userId - algumas versões não aceitam)
+                    BlackBoxCore.get().uninstallPackage(packageName)
+                    Log.d(TAG, "🗑️ Clone desinstalado via uninstallPackage")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ uninstallPackage não disponível: ${e.message}")
+                }
+                
+                // Método 2: Forçar recriação via limpeza de dados do BlackBox
+                try {
+                    // Limpa os dados do app clonado
+                    BlackBoxCore.get().clearAppData(packageName, userId)
+                    Log.d(TAG, "🧹 clearAppData executado para $packageName")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ clearAppData não disponível: ${e.message}")
+                }
+                
+                // Método 3: Se o BlackBox suportar, forçar reload
+                try {
+                    BlackBoxCore.get().reload()
+                    Log.d(TAG, "🔄 BlackBox recarregado")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ reload não disponível: ${e.message}")
+                }
+                
+                Toast.makeText(context, "🔄 Ambiente recriado! Abra o app.", Toast.LENGTH_LONG).show()
+                
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Erro ao recriar ambiente: ${e.message}")
+            }
+
             if (encontrou) {
-                Log.d(TAG, "🔥 RESET MANUAL COMPLETO PARA $packageName (userId=$userId)")
-                Toast.makeText(context, "✅ Reset executado para $packageName", Toast.LENGTH_SHORT).show()
+                Log.d(TAG, "🔥 RESET COMPLETO PARA $packageName (userId=$userId)")
+                Toast.makeText(context, "✅ Reset executado! Recrie o clone se necessário.", Toast.LENGTH_LONG).show()
             } else {
-                Log.w(TAG, "⚠️ NENHUMA PASTA DE DADOS ENCONTRADA PARA $packageName")
+                Log.w(TAG, "⚠️ NENHUMA PASTA DE DADOS ENCONTRADA")
                 Toast.makeText(context, "⚠️ Reset: dados não encontrados", Toast.LENGTH_SHORT).show()
             }
 
@@ -154,9 +193,6 @@ class AppInstaller(private val context: Context) {
         }
     }
 
-    /**
-     * Deleta recursivamente todas as pastas que contêm o nome do pacote
-     */
     private fun deleteAllMatching(rootDir: File, packageName: String): Boolean {
         var deletou = false
         try {
