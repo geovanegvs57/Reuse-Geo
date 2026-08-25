@@ -30,12 +30,16 @@ import kotlin.math.abs
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 /**
  *
  * @Description:
  * @Author: wukaicheng
  * @CreateDate: 2021/4/29 22:21
  */
+=======
+
+>>>>>>> parent of 15c2329 (fix: força recarga da lista de apps após instalação)
 =======
 
 >>>>>>> parent of 15c2329 (fix: força recarga da lista de apps após instalação)
