@@ -1,6 +1,5 @@
-
 plugins {
-alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.application) apply false
     alias(libs.plugins.jetbrains.kotlin.android) apply false
     alias(libs.plugins.android.library) apply false
 }
@@ -14,4 +13,5 @@ ext {
     versionName = "4.0.0"
     xVersion = '1.1.0'
     hiddenApiBypass = '4.3'
+    blackReflection = "true"   // <-- PROPRIEDADE ADICIONADA
 }
